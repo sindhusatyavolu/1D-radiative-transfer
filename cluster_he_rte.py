@@ -199,7 +199,7 @@ def Gamma3(NHe2,nh1,nhe1,nhe2):
     np.seterr(all='warn')
     return fsum, fsumh
 
-# Cooling processes - function returning Lambda_cool
+# Cooling processes - function returning Lambda_cool (K Myr^-1)
 def Cool(T,nH,nH2,nHe2,nHe3,nE):
     T5 = T/100000
     f1=4.05
