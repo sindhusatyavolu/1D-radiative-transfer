@@ -436,6 +436,7 @@ for j in range(count):
 	#RIF =  (1+IF)*dr+10   # in units of kpc 
 	
 	# If change in total optical depth > 10%, timestep is reduced by half, else unchanged
+	#if (np.abs(-NHcell[j+1][IF]+NHcell[j][IF])/(NHcell[j][IF]))>0.1  --old condition based on change in optical depth at location of IF
 	if np.abs((np.cumsum(-NHcell[j+1]+NHcell[j])[len(NHcell)-1])/(np.cumsum(NHcell[j])[len(NHcell)-1]))>0.1 :
 		dt = dt/2
 	else :
