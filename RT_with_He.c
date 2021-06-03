@@ -216,7 +216,7 @@ double Gamma(double NH,double Nhe1, double Nhe2,double nh1,double nhe1l,double n
 
 // fsum  = fsum  + (u[len-1]-u[len-2])*pow(u[len-1]/x0,alpha-1)*exp(-sigma(u[len-1])*NH-sigmahe1(u[len-1])*Nhe1-sigmahe2(u[len-1])*Nhe2)*PH1(u[len-1],nh1,nhe1l,nhe2l) ;  
      
-  /*isothermal case*/
+  /*isothermal monochromatic case*/
    //  fsum  = df*exp(-sigma(u[0])*NH)*PH1(u[0],nh1,nhe1,nhe2) ;  
    //  fsum  = df*exp(-sigma(u[0])*NH-sigmahe1(u[0])*Nhe1-sigmahe2(u[0])*Nhe2)*PH1(u[0],nh1,nhe1l,nhe2l) ;
     //fsum  = df*exp(-sigma(u[0])*NH)*PH1(u[0],nh1,nhe1l,nhe2l) ;
@@ -660,7 +660,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     C = c1*ne*xh2i*nhi + c11*ne*nhe2l + c12*ne*nhe3l +c2*ne*nh1 + c21*ne*nhe2l + c3*(nhi*xh2i+nhe2l+4*nhe3l)*ne + c4*ne + c5*ne*nh1+ c51*ne*nhe1l+ c52*ne*nhe2l +2*Hubble(tsim)*Ti/(K*nu)+ *(xrate)*(Ti/n)/(K*nu);
     if (C != C)
     {
-        printf("Cooling is gone bonkers\n");
+        printf("Cooling fail\n");
         printf("c1 %0.12e\n", c1);
         printf("c11 %0.12e\n", c11);
         printf("c12 %0.12e\n", c12);
@@ -764,13 +764,13 @@ else{
 }
 
 //xhe1t[i+1] = xhe1solve(Tt[i+1],xh2t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi);
-//xhe1t[i+1] = max(x_min_fix,xhe1solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi));
+xhe1t[i+1] = max(x_min_fix,xhe1solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi));
 
 xhe2t[i+1] = xhe2solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi,&he2rate);
 
 xhe3t[i+1] = xhe3solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i+1],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi,&he3rate);
 
-xhe1t[i+1] = max(x_min_fix,1-xhe2t[i+1]-xhe3t[i+1]);
+//xhe1t[i+1] = max(x_min_fix,1-xhe2t[i+1]-xhe3t[i+1]);
 
 if (xhe1t[i+1]+xhe2t[i+1]+xhe3t[i+1]!=1e0)
 {
@@ -876,7 +876,7 @@ double evolve_eqns(double *nh,double **nh2,double **NH,double **nhe1,double **nh
 	//printf("%d\n",out);
 	
 
-    while((out==100000000000 || out==100000000001 || out ==100000000002 || out==100000000003)){
+    while((out==100000000000 || out==100000000001 || out ==100000000002)){
 	dt[k][j] =(double) max(dt_min,dt[k][j]/2);
 	printf("%ld %e\n",out-100000000000, dt[k][j]);
     /*if (dt[k][j]<1e-8)
@@ -893,9 +893,9 @@ double evolve_eqns(double *nh,double **nh2,double **NH,double **nhe1,double **nh
     //printf("%d\n",out);
 	T[k][j+1] = Tt[out];
 	nh2[k][j+1] = nh[k]*xh2t[out];
-    nhe2[k][j+1] = (Y/(4*(1-Y)))*nh[k]*xhe2t[out];
-    nhe3[k][j+1] = (Y/(4*(1-Y)))*nh[k]*xhe3t[out];
-    nhe1[k][j+1] = (Y/(4*(1-Y)))*nh[k]*xhe1t[out];//(Y/(4*(1-Y)))*nh[k] - nhe2[k][j+1] - nhe3[k][j+1];
+    	nhe2[k][j+1] = (Y/(4*(1-Y)))*nh[k]*xhe2t[out];
+    	nhe3[k][j+1] = (Y/(4*(1-Y)))*nh[k]*xhe3t[out];
+    	nhe1[k][j+1] = (Y/(4*(1-Y)))*nh[k]*xhe1t[out];//(Y/(4*(1-Y)))*nh[k] - nhe2[k][j+1] - nhe3[k][j+1];
  	//nh2[k][j+1] = nh[k]*xh2iter(T[k][j],nh2[k][j],nh2[k][j]/nh[k],dt,NH[k][j],(1+k)*cellsize,nh[k],tsim,ti);	
 	//printf("%e\n",nh2[k][j+1]);	
 	//*(*(nh2+k)+j+1) = 0.1*(*(*(nh2+k)+j));
@@ -911,9 +911,9 @@ double evolve_eqns(double *nh,double **nh2,double **NH,double **nhe1,double **nh
   //  printf("dtrec %e %d %d\n", dt[k][j+1],k,j+1);
 }
 	for(int k=0;k<ncells;k++){
-	NH[k][j+1] = cumsum(nh,nh2,k,j+1)*cellsize*3e7; // in cm^-2
-    NHe1[k][j+1] = hecumsum(nhe1,k,j+1)*cellsize*3e7 ;
-    NHe2[k][j+1] = hecumsum(nhe2,k,j+1)*cellsize*3e7 ;
+	NH[k][j+1] = cumsum(nh,nh2,k,j+1)*cellsize*3e7; // in nm^-2
+    	NHe1[k][j+1] = hecumsum(nhe1,k,j+1)*cellsize*3e7;
+    	NHe2[k][j+1] = hecumsum(nhe2,k,j+1)*cellsize*3e7;
 }
 		return dt_rec;
 }
@@ -987,14 +987,14 @@ int main(int argc,char **argv)
 	//printf("%d\n",i);
 	nh[i] = 1e-3;
 	nh2[i][0] = x_min_fix*nh[i];
-    nhe2[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
-    nhe3[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
-    nhe1[i][0] = 8.7e-5-nhe2[i][0]-nhe3[i][0];//(Y/(4*(1-Y)))*nh[i] - nhe2[i][0] - nhe3[i][0];
+    	nhe2[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
+    	nhe3[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
+    	nhe1[i][0] = 8.7e-5-nhe2[i][0]-nhe3[i][0];//(Y/(4*(1-Y)))*nh[i] - nhe2[i][0] - nhe3[i][0];
 	T[i][0] = 1e2;
-	NH[i][0] = cumsum(nh,nh2,i,0)*cellsize*3e7; // in cm^-2
-    NHe1[i][0] = hecumsum(nhe1,i,0)*cellsize*3e7 ;
-    NHe2[i][0] = hecumsum(nhe2,i,0)*cellsize*3e7 ;
-    dt[i][0] = Dt;	
+	NH[i][0] = cumsum(nh,nh2,i,0)*cellsize*3e7; // in nm^-2
+    	NHe1[i][0] = hecumsum(nhe1,i,0)*cellsize*3e7 ;
+    	NHe2[i][0] = hecumsum(nhe2,i,0)*cellsize*3e7 ;
+    	dt[i][0] = Dt;	
 	//printf("%lf\n",NHe2[i][0]);
 }	
 	
