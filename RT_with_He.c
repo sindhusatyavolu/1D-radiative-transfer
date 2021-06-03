@@ -7,7 +7,7 @@
 #ifndef PI
 #define PI 3.1415
 #endif
-#define cellsize 0.015
+#define cellsize 0.15
 #define boxsize 15.0
 #define count 100000
 #define countl 1000000000
