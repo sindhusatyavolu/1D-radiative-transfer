@@ -7,12 +7,12 @@
 #ifndef PI
 #define PI 3.1415
 #endif
-#define cellsize 10
-#define boxsize 200
+#define cellsize 0.015
+#define boxsize 15.0
 #define count 100000
 #define countl 1000000000
-#define Ng 3.15e13*5e53
-#define alpha -1.5
+#define Ng 3.15e13*5e48
+#define alpha -2
 #define kb 1.38e-16
 #define max(x,y) (((x) >= (y)) ? (x) : (y))
 #define min(x,y) (((x) <= (y)) ? (x) : (y))
@@ -20,11 +20,13 @@
 #define T2_MIN_FIX 1e-2
 #define X_MIN  1e-20
 #define X_FM 1e-6
-#define X 0.76
-#define Y 0.24
+#define X  0.742
+#define Y 0.258
 #define lim 1e-1
 #define epsilon 5e-2
 #define x_min_fix 1e-20
+#define dt_min 1e-15
+#define z 0.0
 double cumsum(double *nH, double **nH2, int i, int j){
 	double sum =0;
           
@@ -52,8 +54,8 @@ double GE(double Ti){
     double lam = 2*Th1/Ti;
     double T5 =Ti/100000 ;
    // return 3.15e13*5.85e-11*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-157809.1/Ti);
-   // return 3.15e13*1.17e-10*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-157809.1/Ti);//bolton
-    return 3.15e13*21.11*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.089)/pow(1+pow((lam/0.354),0.874),1.101) ;
+    //return 3.15e13*1.17e-10*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-157809.1/Ti);//bolton
+   return  3.15e13*21.11*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.089)/pow(1+pow((lam/0.354),0.874),1.101) ;
 }
 
 double betahe1(double Ti){
@@ -78,7 +80,7 @@ double ralpha(double Ti){
     double Th1 = 157807; 
     double lam = 2*Th1/Ti;
 
-    return 3.15e13*1.269e-13*pow(lam,1.503)/pow((1+pow(lam/0.522,0.47)),1.923);
+   return 3.15e13*1.269e-13*pow(lam,1.503)/pow((1+pow(lam/0.522,0.47)),1.923);
   //  double Tl = kb*Ti/1.6e-12;
   //  return 3.15e13*(exp(-28.6130338-0.72411256*log(Tl)-2.02604473e-2*log(pow(Tl,2))-2.38086188e-3*log(pow(Tl,3))-3.21260521e-4*log(pow(Tl,4))-1.42150291e-5*log(pow(Tl,5))+4.98910892e-6*log(pow(Tl,6))+5.75561414e-7*log(pow(Tl,7))-1.85676704e-8*log(pow(Tl,8))-3.07113524e-9*log(pow(Tl,9))));
 
@@ -89,7 +91,7 @@ double alphahe2(double Ti){
     double lam = 570670/Ti;
     double Tl = kb*Ti/1.6e-12;
    return 3.15e13*3e-14*pow(lam,0.654);
- //  return 3.15e13*(3.925e-13*pow(Tl,-0.6353)+1.544e-9*pow(Tl,-1.5)*exp(-48.596/Tl)*(0.3+exp(8.1/Tl)));
+//   return 3.15e13*(3.925e-13*pow(Tl,-0.6353)+1.544e-9*pow(Tl,-1.5)*exp(-48.596/Tl)*(0.3+exp(8.1/Tl)));
 }
 
 
@@ -113,7 +115,7 @@ double sigma(double f){
     double y1  = 0 ;
     double y = sqrt(x*x+y1*y1);
    return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);
-// return 6.3e-18*1e14*(1.34*pow(f/13.6,-2.99)-0.34*pow(f/13.6,-3.99)); //bolton cross sections
+  // return 6.3e-18*1e14*(1.34*pow(f/13.6,-2.99)-0.34*pow(f/13.6,-3.99)); //bolton cross sections
 }
 
 double sigmahe1(double f){
@@ -127,7 +129,7 @@ double sigmahe1(double f){
     double y1  = 2.136 ;
     double y = sqrt(x*x+y1*y1);
     return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);
-  //return 7.03e-18*1e14*(1.66*pow(f/54.5,-2.05)-0.66*pow(f/54.5,-3.05)); //bolton cross sections
+  //return 7.03e-18*1e14*(1.66*pow(f/24.6,-2.05)-0.66*pow(f/24.6,-3.05)); //bolton cross sections
 }
 
 double sigmahe2(double f){
@@ -155,6 +157,7 @@ double PH1(double x,double nh1,double nhe1l,double nhe2l){
     if (D ==0 || D!= D)
     {
         printf("D %0.12e\n",D);
+        printf("%0.12e %0.12e\n",nhe1l,nhe2l );
         exit(0);
     }
     
@@ -188,25 +191,36 @@ double Gamma(double NH,double Nhe1, double Nhe2,double nh1,double nhe1l,double n
     
     //double u[] ={13.6, 14.4059, 15.2595, 16.1636, 17.1214, 18.1359, 19.2105, 20.3488,21.5545, 22.8317, 24.1846, 25.6176, 27.1356, 28.7435, 30.4466, 32.2507, 34.1617, 36.1859, 38.33, 40.6012, 43.007, 45.5553, 48.2546, 51.1139, 54.1426,57.3507, 60.749, 64.3486, 68.1615, 72.2003, 76.4784, 81.0101, 85.8102, 90.8948, 96.2806, 101.986, 108.029, 114.43, 121.21, 128.392, 136};
     // SPACING = (b/a)^(1/n) , n= 40, b = 136, a =13.6 
-    double u[]={13.6,15.2594509785,17.1213856004,19.2105106069,21.5545474175,24.1845999765,27.1355674836,30.4466074845,34.1616554685,38.3300078652,43.0069761783,48.2546209358,54.1425751953,60.7489685325,68.1614637733,76.4784202259,85.8101988493,96.2806266762,108.028639923,121.210127586,136.0};
-
-    double fsum=0 ;
+    //double u[]={13.6,15.2594509785,17.1213856004,19.2105106069,21.5545474175,24.1845999765,27.1355674836,30.4466074845,34.1616554685,38.3300078652,43.0069761783,48.2546209358,54.1425751953,60.7489685325,68.1614637733,76.4784202259,85.8101988493,96.2806266762,108.028639923,121.210127586,136.0};
+  double u[]={13.6,15.3521953269,17.3301398056,19.5629184807,22.083363653,24.9285376673,28.1402779032,31.7658119796,35.8584522227,40.4783796062,45.6935286935,51.580586594,58.2261206226,65.7278512446,74.1960890239,83.755356705,94.5462202801,106.727355968,120.477883496,136.0};
+    double fsum =0;
     double x0 = u[0];
-    
+    //printf("U %0.12e\n",u[0] );
     int len = sizeof(u)/sizeof(u[0]);
-    double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len-1));
+  //  double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len));
    // fsum = integral(&u[0],len,NH,nh1,nhe1,nhe2);
     //for(int i=0;i<sizeof(u)/sizeof(u[0]);i++){
- 
-   // printf("len %d\n",len );
-    for(int i=0;i<len;i++){
-     fsum = fsum + df*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PH1(u[i],nh1,nhe1l,nhe2l) ;	
-     
+    //printf("%0.12e df\n",df );
+  // printf("len %d\n",len );
+    double lent =len;
+    //fsum = 0.5*(u[1]-u[0])*pow(u[0]/x0,alpha-1)*exp(-sigma(u[0])*NH-sigmahe1(u[0])*Nhe1-sigmahe2(u[0])*Nhe2)*PH1(u[0],nh1,nhe1l,nhe2l)+0.5*(u[19]-u[18])*pow(u[19]/x0,alpha-1)*exp(-sigma(u[19])*NH-sigmahe1(u[19])*Nhe1-sigmahe2(u[19])*Nhe2)*PH1(u[19],nh1,nhe1l,nhe2l);
+   
+    for(int i=0;i<len-1;i++){
+    // double df = 0.5*(u[i+1]-u[i-1]);//0.5*x0*pow(u[len-1]/x0,i/(lent))*(u[len-1]/x0-1);
+    // double x1 = u[i] ;//(u[i+1]+u[i])/2.0;
+    // double x2 = u[i+1];
+     double df = (u[i+1]-u[i]);
+    // fsum = fsum + 0.5*df*(pow(x1/x0,alpha-1)*exp(-sigma(x1)*NH-sigmahe1(x1)*Nhe1-sigmahe2(x1)*Nhe2)*PH1(x1,nh1,nhe1l,nhe2l)+pow(x2/x0,alpha-1)*exp(-sigma(x2)*NH-sigmahe1(x2)*Nhe1-sigmahe2(x2)*Nhe2)*PH1(x2,nh1,nhe1l,nhe2l)) ;	
+     fsum = fsum + df*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PH1(u[i],nh1,nhe1l,nhe2l);
 }
- 
+
+// fsum  = fsum  + (u[len-1]-u[len-2])*pow(u[len-1]/x0,alpha-1)*exp(-sigma(u[len-1])*NH-sigmahe1(u[len-1])*Nhe1-sigmahe2(u[len-1])*Nhe2)*PH1(u[len-1],nh1,nhe1l,nhe2l) ;  
+     
   /*isothermal case*/
    //  fsum  = df*exp(-sigma(u[0])*NH)*PH1(u[0],nh1,nhe1,nhe2) ;  
-  //  fsum  = df*exp(-sigma(u[0])*NH-sigmahe1(u[0])*Nhe1-sigmahe2(u[0])*Nhe2)*PH1(u[0],nh1,nhe1,nhe2) ;
+   //  fsum  = df*exp(-sigma(u[0])*NH-sigmahe1(u[0])*Nhe1-sigmahe2(u[0])*Nhe2)*PH1(u[0],nh1,nhe1l,nhe2l) ;
+    //fsum  = df*exp(-sigma(u[0])*NH)*PH1(u[0],nh1,nhe1l,nhe2l) ;
+    //printf("%0.12e\n",nhe2l );
     return fsum;
 }
 
@@ -221,15 +235,25 @@ double Gammahe1(double NH,double Nhe1, double Nhe2,double nh1,double nhe1l,doubl
     double x0 = u[0];
     
     int len = sizeof(u)/sizeof(u[0]);
-    double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len-1));
+    //double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len-1));
    // fsum = integral(&u[0],len,NH,nh1,nhe1,nhe2);
     //for(int i=0;i<sizeof(u)/sizeof(u[0]);i++){
  
+for(int i=0;i<len-1;i++){
+    // double df = 0.5*(u[i+1]-u[i-1]);//0.5*x0*pow(u[len-1]/x0,i/(lent))*(u[len-1]/x0-1);
+     double x1 = u[i] ;//(u[i+1]+u[i])/2.0;
+     double x2 = u[i+1];
+     double df = (u[i+1]-u[i]);
+    // fsum = fsum + 0.5*df*(pow(x1/x0,alpha-1)*exp(-sigma(x1)*NH-sigmahe1(x1)*Nhe1-sigmahe2(x1)*Nhe2)*PHe1(x1,nh1,nhe1l,nhe2l)+pow(x2/x0,alpha-1)*exp(-sigma(x2)*NH-sigmahe1(x2)*Nhe1-sigmahe2(x2)*Nhe2)*PH1(x2,nh1,nhe1l,nhe2l)) ; 
+     fsum = fsum + df*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PHe1(u[i],nh1,nhe1l,nhe2l);
+}
 
+/*
     for(int i=0;i<len;i++){
      fsum = fsum + df*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PHe1(u[i],nh1,nhe1l,nhe2l) ;   
      
 }
+*/
 // if (fsum==0)
 // {
 //     printf("fsum zero %0.12e,%0.12e,%0.12e\n", pow(u[19]/x0,alpha-1),exp(-sigma(u[0])*NH-sigmahe1(u[0])*Nhe1-sigmahe2(u[0])*Nhe2),PHe1(u[19],nh1,nhe1l,nhe2l));
@@ -252,16 +276,25 @@ double Gammahe2(double NH,double Nhe1, double Nhe2,double nh1,double nhe1l,doubl
     double x0 = u[0];
     
     int len = sizeof(u)/sizeof(u[0]);
-    double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len-1));
+    //double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len-1));
    // fsum = integral(&u[0],len,NH,nh1,nhe1,nhe2);
     //for(int i=0;i<sizeof(u)/sizeof(u[0]);i++){
  
+for(int i=0;i<len-1;i++){
+    // double df = 0.5*(u[i+1]-u[i-1]);//0.5*x0*pow(u[len-1]/x0,i/(lent))*(u[len-1]/x0-1);
+     double x1 = u[i] ;//(u[i+1]+u[i])/2.0;
+     double x2 = u[i+1];
+     double df = (u[i+1]-u[i]);
+   //  fsum = fsum + 0.5*df*(pow(x1/x0,alpha-1)*exp(-sigma(x1)*NH-sigmahe1(x1)*Nhe1-sigmahe2(x1)*Nhe2)*PHe2(x1,nh1,nhe1l,nhe2l)+pow(x2/x0,alpha-1)*exp(-sigma(x2)*NH-sigmahe1(x2)*Nhe1-sigmahe2(x2)*Nhe2)*PH1(x2,nh1,nhe1l,nhe2l)) ; 
+     fsum = fsum + df*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PHe2(u[i],nh1,nhe1l,nhe2l);
+}
 
+/*
     for(int i=0;i<len;i++){
      fsum = fsum + df*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PHe2(u[i],nh1,nhe1l,nhe2l) ;   
      
 }
- 
+ */
   /*isothermal case*/
  //    fsum  = df*exp(-sigma(u[0])*NH-sigmahe1(u[0])*Nhe1-sigmahe2(u[0])*Nhe2)*PHe2(u[0],nh1,nhe1,nhe2) ;  
    
@@ -273,8 +306,8 @@ double Heat(double NH,double Nhe1,double Nhe2,double nh1,double nhe1l,double nhe
     
     //double u[] ={13.6, 14.4059, 15.2595, 16.1636, 17.1214, 18.1359, 19.2105, 20.3488,21.5545, 22.8317, 24.1846, 25.6176, 27.1356, 28.7435, 30.4466, 32.2507, 34.1617, 36.1859, 38.33, 40.6012, 43.007, 45.5553, 48.2546, 51.1139, 54.1426,57.3507, 60.749, 64.3486, 68.1615, 72.2003, 76.4784, 81.0101, 85.8102, 90.8948, 96.2806, 101.986, 108.029, 114.43, 121.21, 128.392, 136};
     // SPACING = (b/a)^(1/n) , n= 40, b = 136, a =13.6 
-    double u[]={13.6,15.2594509785,17.1213856004,19.2105106069,21.5545474175,24.1845999765,27.1355674836,30.4466074845,34.1616554685,38.3300078652,43.0069761783,48.2546209358,54.1425751953,60.7489685325,68.1614637733,76.4784202259,85.8101988493,96.2806266762,108.028639923,121.210127586,136.0};
-    
+    //double u[]={13.6,15.2594509785,17.1213856004,19.2105106069,21.5545474175,24.1845999765,27.1355674836,30.4466074845,34.1616554685,38.3300078652,43.0069761783,48.2546209358,54.1425751953,60.7489685325,68.1614637733,76.4784202259,85.8101988493,96.2806266762,108.028639923,121.210127586,136.0};
+    double u[]={13.6,15.3521953269,17.3301398056,19.5629184807,22.083363653,24.9285376673,28.1402779032,31.7658119796,35.8584522227,40.4783796062,45.6935286935,51.580586594,58.2261206226,65.7278512446,74.1960890239,83.755356705,94.5462202801,106.727355968,120.477883496,136.0};
     double fsum = 0 ;
     double x0 = u[0];
     
@@ -283,7 +316,8 @@ double Heat(double NH,double Nhe1,double Nhe2,double nh1,double nhe1l,double nhe
    // for(int i=0;i<sizeof(u)/sizeof(u[0]);i++){
  //   fsum  = hintegral(&u[0],len,NH,nh1,nhe1,nhe2);
 
-    for(int i=0;i<len;i++){	
+    for(int i=0;i<len-1;i++){	
+     df = u[i+1]-u[i]; 
      fsum = fsum + df*(u[i]-x0)*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PH1(u[i],nh1,nhe1l,nhe2l) ;	
     // printf("%0.12e\n",PH1(u[i],nh1,nhe1l,nhe2l));
 }
@@ -304,7 +338,8 @@ double Heat2(double NH,double Nhe1, double Nhe2,double nh1,double nhe1l,double n
     int len = sizeof(u)/sizeof(u[0]);
     double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len-1));
 
-    for(int i=0;i<len;i++){
+    for(int i=0;i<len-1;i++){
+      df = u[i+1]-u[i];
      fsum = fsum + df*(u[i]-x0)*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PHe1(u[i],nh1,nhe1l,nhe2l) ;   
      
 }
@@ -329,7 +364,8 @@ double Heat3(double NH,double Nhe1, double Nhe2,double nh1,double nhe1l,double n
     int len = sizeof(u)/sizeof(u[0]);
     double df = 1;//0.5*pow(u[len-1]/x0,1.0/(len-1));
 
-    for(int i=0;i<len;i++){
+    for(int i=0;i<len-1;i++){
+      df = u[i+1] - u[i];
      fsum = fsum + df*(u[i]-x0)*pow(u[i]/x0,alpha-1)*exp(-sigma(u[i])*NH-sigmahe1(u[i])*Nhe1-sigmahe2(u[i])*Nhe2)*PHe2(u[i],nh1,nhe1l,nhe2l) ;   
      
 }
@@ -344,7 +380,7 @@ double Heat3(double NH,double Nhe1, double Nhe2,double nh1,double nhe1l,double n
 double Hubble(double t){
     double  omega_m = 0.32;
     double  H0 = 67.32*1.05e-6;
-    double z =  6;//5.945518;
+   // double z =  0;//5.945518;
     return sqrt(omega_m)*H0*cosh(1.5*H0*sqrt(1-omega_m)*t)*pow(1+z,1.5);///sinh(1.5*H0*sqrt(1-omega_m)*t);
 }
 
@@ -354,7 +390,7 @@ double xh2solve(double Ti,double xh2,double xhe1,double xhe2,double xhe3,double 
     double nhe2l = (Y/(4*(1-Y)))*nhi*xhe2;
     double nhe3l = (Y/(4*(1-Y)))*nhi*xhe3;
 
-
+    //printf("%0.12e %0.12e \n",Nhe1,Nhe2 );
  //   double nhe2 =0;
  //   double nhe3 =0;
  //   double nhe1 =0;
@@ -423,7 +459,7 @@ double xhe1solve(double Ti,double xh2i,double xhe1,double xhe2,double xhe3,doubl
 
         double fac = -alpha*Ng/pow(3e21,3);
     /*isothermal case */
-   // double fac = Ng/pow(3e21,3);
+    //double fac = Ng/pow(3e21,3);
         double vol = 1.0/(4*PI*R*R*cellsize);
     
         double nh1 = nhi*(1-xh2i);
@@ -466,7 +502,7 @@ double xhe2solve(double Ti,double xh2i,double xhe1,double xhe2,double xhe3,doubl
 
     double fac = -alpha*Ng/pow(3e21,3);
     /*isothermal case */
-   // double fac = Ng/pow(3e21,3);
+   //double fac = Ng/pow(3e21,3);
     double vol = 1.0/(4*PI*R*R*cellsize);
     
     double nh1 = nhi*(1-xh2i);
@@ -511,7 +547,7 @@ double xhe3solve(double Ti,double xh2i,double xhe1,double xhe2,double xhe3,doubl
     double vol = 1.0/(4*PI*R*R*cellsize);
     double nh1 = nhi*(1-xh2i);
     double C,D,nu,Tnu;
-    nu = pow((X*(1+xh2i)+Y*(1+xhe2+2*xhe3)/4),(-1));
+    nu = pow((X*(1+xh2i)+Y*(1+xhe2+2*xhe3)/4.0),(-1));
     Tnu = Ti/nu;
     double Gammab; 
     Gammab = 0;//0.442e-18*3.15e13; // from haardt madau 2012
@@ -539,12 +575,13 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     
     
     double fac = -alpha*Ng/pow(3e21,3);
+    //double fac = Ng/(pow(3e21,3));
     double fh = fac*1.6e-12; // 1.6e-12 is factor ev to erg
     double vol = 1.0/(4*PI*R*R*cellsize);
     
     //double K = (2.0/3)*(1.0/(nhi*kb)); // only H # cm^3erg^-1 K    
      
-    double nh1 = nhi*(1-xh2i);
+    double nh1 = nhi*(1.0-xh2i);
     //double nhe1l = (Y/(4*(1-Y)))*nhi*(xhe1);
     double nhe1l = max((Y/(4*(1-Y)))*nhi*(x_min_fix),(Y/(4*(1-Y)))*nhi*(xhe1));
     double nhe2l = (Y/(4*(1-Y)))*nhi*xhe2;
@@ -552,7 +589,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     double ne = xh2i*nhi+(Y/(4*(1-Y)))*nhi*(xhe2+2*xhe3);
     double n = nhi + (Y/(4*(1-Y)))*nhi + ne;
 
-    double K = (2.0/3)*(1.0/(nhi*kb)); // From Chen
+    double K = (2.0/3)*(1.0/(n*kb)); // From Chen
     
     double T5 = Ti/100000.0;
     
@@ -585,7 +622,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     //#fh = 1.04e+8
     double Hf = 1.05e-6;
     
-    double z = 6;//5.945518;
+    //double z = 0;//5.945518;
     
   //  double X = 1;
   //  double Y = 0;
@@ -620,7 +657,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
 
   //  C = c1*ne*xh2i*nhi + c2*ne*nh1 + c3*(nhi*xh2i+nhe2+4*nhe3)*ne + c4*ne+ 2*Hubble(tsim)*Ti/(K*nu);
 
-    C = c1*ne*xh2i*nhi + c11*ne*nhe2l + c12*ne*nhe3l +c2*ne*nh1 + c21*ne*nhe2l + c3*(nhi*xh2i+nhe2l+4*nhe3l)*ne + c4*ne + c5*ne*nh1+ c51*ne*nhe1l+ c52*ne*nhe2l +2*Hubble(tsim)*Ti/(K*nu);//+ *(xrate)*(Ti/n)/(K*nu);
+    C = c1*ne*xh2i*nhi + c11*ne*nhe2l + c12*ne*nhe3l +c2*ne*nh1 + c21*ne*nhe2l + c3*(nhi*xh2i+nhe2l+4*nhe3l)*ne + c4*ne + c5*ne*nh1+ c51*ne*nhe1l+ c52*ne*nhe2l +2*Hubble(tsim)*Ti/(K*nu)+ *(xrate)*(Ti/n)/(K*nu);
     if (C != C)
     {
         printf("Cooling is gone bonkers\n");
@@ -655,7 +692,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     
     double A11 = -4.96095e-13*pow(1/Ti,1.654);
     double A12 = -(9.41467e11*f12*pow(1/Ti,1.965)/(pow((1 + 1573.42*pow((1/Ti),0.502)),2.697)))+ 2.07829e15*f12*pow(1/Ti,2.467)/pow((1 + 1573.42*pow((1/Ti),0.502)),3.697);
-    double A21 = 473638*exp(-473638/Ti)*f21/((1+pow(T5,1.0/2))*pow(Ti,2.397))- 0.397*exp(-473638/Ti)*f21/((1+pow(T5,1.0/2))*pow(Ti,1.397)) - exp(-473638/Ti)*f21/(200*pow(10,0.5)*pow((1+pow(T5,1.0/2)),2)*pow(Ti,0.897));
+    double A21 = 473638.0*exp(-473638/Ti)*f21/((1+pow(T5,1.0/2))*pow(Ti,2.397))- 0.397*exp(-473638/Ti)*f21/((1+pow(T5,1.0/2))*pow(Ti,1.397)) - exp(-473638/Ti)*f21/(200*pow(10,0.5)*pow((1+pow(T5,1.0/2)),2)*pow(Ti,0.897));
     /*Add coll ion derivatives*/
     double dLdt = -(A1+ A2 +A3 +A4 +A11+ A12+ A21 +2*Hubble(tsim)/(K*nu));//+(1/(nhi*xh2i))*(*xrate));
     //double dLdt =0;
@@ -668,7 +705,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
 }
 
 
-int xTiter(double dti,double NH1,double Nhe1, double Nhe2,double R,double nhi,double tsim,double ti,double *Tt, double *xh2t,double *xhe1t,double *xhe2t,double *xhe3t,double *dtrec){
+long int xTiter(double dti,double NH1,double Nhe1, double Nhe2,double R,double nhi,double tsim,double ti,double *Tt, double *xh2t,double *xhe1t,double *xhe2t,double *xhe3t,double *dtrec){
   //  double *Tt =(double*)malloc(countl*sizeof(double));
   //  Tt[0] = T[k][j];
   //  double *xh2t =(double*)malloc(countl*sizeof(double)); 	
@@ -676,7 +713,7 @@ int xTiter(double dti,double NH1,double Nhe1, double Nhe2,double R,double nhi,do
    // double *NHt =(double*)malloc(countl*sizeof(double)); 	
    // NHt[0] = NH[k][j];
    // printf("%d %lf\n",k,Tt[0]);
-    int storei;
+    int storei=0;
     double frac_change = 0.0;
     //double ne_init;
     double dUU;
@@ -690,7 +727,7 @@ int xTiter(double dti,double NH1,double Nhe1, double Nhe2,double R,double nhi,do
         
 
         //Tt[i+1] = (double) max(T2_MIN_FIX,Tsolve(Tt[i],NH1,Nhe1,Nhe2,xh2t[i],xhe1t[i],xhe2t[i],xhe3t[i],nhi,dti,R,tsim,&Trate));
-        Tt[i+1] = Tsolve(Tt[i],NH1,Nhe1,Nhe2,xh2t[i],xhe1t[i],xhe2t[i],xhe3t[i],nhi,dti,R,tsim,&Trate,&nerate);
+        Tt[i+1] = (double) max(T2_MIN_FIX,Tsolve(Tt[i],NH1,Nhe1,Nhe2,xh2t[i],xhe1t[i],xhe2t[i],xhe3t[i],nhi,dti,R,tsim,&Trate,&nerate));
       //  printf("T %e\n",Tt[i+1] );
         dUU = (double) fabs(max(T2_MIN_FIX,Tt[i]+Trate*dti)-Tt[i]);
      //   printf("heat %e\n",Heat(NH1,nhi,0,0)*(-alpha*Ng/pow(3e21,3))* 1.6e-12*1.0/(4*PI*R*R*cellsize*kb));
@@ -702,9 +739,9 @@ int xTiter(double dti,double NH1,double Nhe1, double Nhe2,double R,double nhi,do
    //     printf("change %e\n",(double) max(dUU,fabs(Tt[i+1]-Tt[i]))/(Tt[i]+T_MIN) );
 
 
-	if((double) max(dUU,fabs(Tt[i+1]-Tt[i]))/(Tt[i]+T_MIN)>lim){
+	if((double) max(dUU,fabs(Tt[i+1]-Tt[i]))/(Tt[i]+T_MIN)>lim & dti>dt_min){
 	//printf("hii");
-	return 0;
+	return 100000000000;
 }
 	else{
 	//	printf("hi");
@@ -719,19 +756,21 @@ xh2t[i+1] = xh2solve(Tt[i+1],xh2t[i],xhe1t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe
 //printf("xh2 %e\n",xh2t[i+1] );
 /*complete this exactly*/
 
-     if((double) max(fabs(xh2t[i+1]-xh2t[i]),Xrate*dti)/(xh2t[i]+X_FM) >lim){
-	return 1;
+     if((double) max(fabs(xh2t[i+1]-xh2t[i]),Xrate*dti)/(xh2t[i]+X_FM) >lim & dti>dt_min){
+	return 100000000001;
 }
 else{
 	frac_change = (double) max(frac_change,fabs(xh2t[i+1]-xh2t[i])/(xh2t[i])); //check
 }
 
 //xhe1t[i+1] = xhe1solve(Tt[i+1],xh2t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi);
-xhe1t[i+1] = max(x_min_fix,xhe1solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi));
+//xhe1t[i+1] = max(x_min_fix,xhe1solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi));
 
-xhe2t[i+1] = xhe2solve(Tt[i+1],xh2t[i+1],xhe1t[i+1],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi,&he2rate);
+xhe2t[i+1] = xhe2solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi,&he2rate);
 
-xhe3t[i+1] = xhe3solve(Tt[i+1],xh2t[i+1],xhe1t[i+1],xhe2t[i+1],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi,&he3rate);
+xhe3t[i+1] = xhe3solve(Tt[i+1],xh2t[i+1],xhe1t[i],xhe2t[i+1],xhe3t[i],dti,NH1,Nhe1,Nhe2,R,nhi,&he3rate);
+
+xhe1t[i+1] = max(x_min_fix,1-xhe2t[i+1]-xhe3t[i+1]);
 
 if (xhe1t[i+1]+xhe2t[i+1]+xhe3t[i+1]!=1e0)
 {
@@ -745,11 +784,12 @@ if (xhe1t[i+1]+xhe2t[i+1]+xhe3t[i+1]!=1e0)
   //  printf("He fracs don't add up to 1  but %0.12e\n",xhe1t[i+1]+xhe2t[i+1]+xhe3t[i+1]);
 }
 
+
 ne_init = xh2t[i]*nhi+(Y/(4*(1-Y)))*nhi*(xhe2t[i]+2*xhe3t[i]);
     ne_up = xh2t[i+1]*nhi+(Y/(4*(1-Y)))*nhi*(xhe2t[i+1]+2*xhe3t[i+1]);
     nerate =  Xrate*nhi+(Y/(4*(1-Y)))*nhi*(he2rate+2*he3rate);
-    if(fabs(ne_up - ne_init)/(ne_init+X_FM)>lim){
-    return 2;
+    if(fabs(ne_up - ne_init)/(ne_init+X_FM)>lim & dti >dt_min){
+    return 100000000002;
 }
 else {
     frac_change = (double) max(frac_change,fabs(ne_up - ne_init)/(ne_init));
@@ -757,13 +797,14 @@ else {
 
 /*
 	ne_init = xh2t[i]*nhi;
-	if(fabs(xh2t[i+1]*nhi-ne_init)/ne_init>0.1){
-	return 2;
+	if(fabs(xh2t[i+1]*nhi-ne_init)/ne_init>0.1 & dti>dt_min){
+	return 100000000003;
 }
+
 else {
 	frac_change = (double) max(frac_change,fabs(xh2t[i+1]*nhi-ne_init)/(ne_init+X_FM));
 }
-*/	
+*/
 	double tcal = ti + dti;
     ti = tcal ;
 
@@ -789,7 +830,7 @@ else{
    
    // printf("dti %e\n", dti);
 	
-    
+   //     printf("tsim %lf\n", tcal);
         if (tcal >= tsim){
             storei = i+1;
             printf("tsim %lf\n", tcal);
@@ -800,7 +841,7 @@ else{
 
    }
 
-	printf("%lf %d\n",Tt[storei],storei);
+	printf("T %lf %d\n",Tt[storei],storei);
 //	T[k][j+1] = Tt[storei];
 //	nh2[k][j+1] = xh2t[storei]*nhi;
 
@@ -814,7 +855,7 @@ double evolve_eqns(double *nh,double **nh2,double **NH,double **nhe1,double **nh
 	//double Y =0;
 	//double xhe2 =0;
 	//double xhe3 =0;
-	int out;
+	long int out;
 	double *Tt =(double*)malloc(countl*sizeof(double));
 	double *xh2t =(double*)malloc(countl*sizeof(double));
     double *xhe1t =(double*)malloc(countl*sizeof(double));
@@ -828,16 +869,16 @@ double evolve_eqns(double *nh,double **nh2,double **NH,double **nhe1,double **nh
 	//mu = pow((X*(1+nh2[k][j]/nh[k])+Y*(1+nh2[k][j]/nh[k]+xhe2+2*xhe3)/4),(-1));
     Tt[0] = T[k][j];
     xh2t[0] = nh2[k][j]/nh[k];
-    xhe2t[0] = nhe2[k][j]/((Y/(4*(1-Y)))*nh[k]);
-    xhe3t[0] = nhe3[k][j]/((Y/(4*(1-Y)))*nh[k]);
+    xhe2t[0] = nhe2[k][j]/((Y/(4.0*(1-Y)))*nh[k]);
+    xhe3t[0] = nhe3[k][j]/((Y/(4.0*(1-Y)))*nh[k]);
     xhe1t[0] = 1.0 -xhe2t[0] -xhe3t[0];
 	out = xTiter(dt[k][j],NH[k][j],NHe1[k][j],NHe2[k][j],(1+k)*cellsize,nh[k],tsim,ti,Tt,xh2t,xhe1t,xhe2t,xhe3t,&dt_rec);  // equivalent of cool_step routine
 	//printf("%d\n",out);
 	
 
-    while((out==0 || out==1 || out ==2)){
-	dt[k][j] =dt[k][j]/2;
-	printf("%d %e\n",out, dt[k][j]);
+    while((out==100000000000 || out==100000000001 || out ==100000000002 || out==100000000003)){
+	dt[k][j] =(double) max(dt_min,dt[k][j]/2);
+	printf("%ld %e\n",out-100000000000, dt[k][j]);
     /*if (dt[k][j]<1e-8)
     {
         out = xTiter(dt[k][j],NH[k][j],(1+k)*cellsize,nh[k],tsim,ti,Tt,xh2t,&dt_rec);
@@ -847,7 +888,7 @@ double evolve_eqns(double *nh,double **nh2,double **NH,double **nhe1,double **nh
 
 	//printf("%d\n",out);
 } 
-	printf("%d\n",out);
+	printf("%ld \n",out);
     //int out = outi;
     //printf("%d\n",out);
 	T[k][j+1] = Tt[out];
@@ -888,11 +929,11 @@ int main(int argc,char **argv)
     	//printf("%lf\n",(double) max(3e-3,4.4e-3));
     double  omega_m = 0.32;
     double  H0 = 67.32*1.05e-6;
-    double z =  6;    
+  //  double z =  0.0;    
     double a = 1/(1+z);
     double ti = (1.0/H0)*(2.0/3)*pow(1-omega_m,-0.5)*asinh(pow((1-omega_m)/omega_m,0.5)*pow(a,1.5));
 	printf("ti %lf\n",ti );
-    //double ti = 935.7;
+  //  double ti = 935.7;
 	double tf = ti + atof(argv[1]);
 //	printf("%lf\n",tf);
 	//double epsilon = 0.05;	
@@ -944,12 +985,12 @@ int main(int argc,char **argv)
 /* Initial values*/
 	for (int i = 0; i < ncells; ++i){
 	//printf("%d\n",i);
-	nh[i] = 7e-5;
+	nh[i] = 1e-3;
 	nh2[i][0] = x_min_fix*nh[i];
     nhe2[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
-    nhe3[i][0] = 0;
-    nhe1[i][0] = (Y/(4*(1-Y)))*nh[i] - nhe2[i][0] - nhe3[i][0];
-	T[i][0] = 200;
+    nhe3[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
+    nhe1[i][0] = 8.7e-5-nhe2[i][0]-nhe3[i][0];//(Y/(4*(1-Y)))*nh[i] - nhe2[i][0] - nhe3[i][0];
+	T[i][0] = 1e2;
 	NH[i][0] = cumsum(nh,nh2,i,0)*cellsize*3e7; // in cm^-2
     NHe1[i][0] = hecumsum(nhe1,i,0)*cellsize*3e7 ;
     NHe2[i][0] = hecumsum(nhe2,i,0)*cellsize*3e7 ;
@@ -974,6 +1015,10 @@ double tsim ;
 
 int storej;
 double dt_new;
+double RIF;
+double NHION;
+int cks;
+
 for (int j=0;j<count;j++){
 	tsim = ti + Dt;
 	//printf("%d\n",j);	
@@ -981,7 +1026,16 @@ for (int j=0;j<count;j++){
     /*evolve all cells for a  global timestep*/
     evolve_eqns(nh,nh2,NH,nhe1,nhe2,nhe3,NHe1,NHe2,T,ncells,ti,tsim,dt,j,Dt);	// my equivalent of subroutine rt_solve_cooling
 //	printf("dt new out %e \n",dt[0][j+1]);
-
+    for (int ck = 0; ck < ncells; ++ck)
+    {
+        if (nh2[ck][j]/nh[ck]<=0.5)
+        {
+            RIF = (1+ck)*cellsize;
+            cks =ck;
+            break; 
+        }
+    }
+    printf("RIF %0.12e\n",RIF );
     ti = tsim;
 	printf("%lf\n",tsim);
 	if(fabs(tf-tsim)<=Dt){
@@ -990,6 +1044,16 @@ for (int j=0;j<count;j++){
 	break;
 } 
     
+   if (cks==ncells-1)
+   {
+        Dt = 3261.6*(epsilon/0.1)*(cellsize/10.0)*1e-6;//nm^-2//*(pow(3e21,2))/1e-14 ; // in kpc^-2 
+   }
+   else{
+   NHION = NH[cks+1][j];//nm^-2//*(pow(3e21,2))/1e-14 ; // in kpc^-2 
+   printf("%0.12e %d\n",NHION,cks );
+   Dt = 4*PI*pow(RIF*3e28,2)*NHION*pow(Ng,-1); //in Myr
+   printf("Dt %0.12e\n",Dt );    
+   }
 }
 
 printf("[");
@@ -1013,11 +1077,11 @@ t = clock() - t;
     printf("fun() took %f seconds to execute \n", time_taken);	    
 
 
- FILE *fptr = fopen("bxh1_1myr.txt","w");
- FILE *fdptr = fopen("bxhe2_1myr.txt","w");
-FILE *fd1ptr = fopen("bxhe3_1myr.txt","w");
-FILE *fd2ptr = fopen("bT_1myr.txt","w");
-FILE *fd3ptr = fopen("bxhe1_1myr.txt","w");
+ FILE *fptr = fopen("./c2raytest/dr001_c2xh1_10myr_b2.txt","w");
+ FILE *fdptr = fopen("./c2raytest/dr001_c2xhe2_10myr_b2.txt","w");
+FILE *fd1ptr = fopen("./c2raytest/dr001_c2xhe3_10myr_b2.txt","w");
+FILE *fd2ptr = fopen("./c2raytest/dr001_c2T_10myr_b2.txt","w");
+FILE *fd3ptr = fopen("./c2raytest/dr001_c2xhe1_10myr_b2.txt","w");
 /*
 FILE *fptr = fopen("intblum_alphacrct_xh1_001myr.txt","w");
 FILE *fdptr = fopen("intblum_alphacrct__T_001myr.txt","w");    
