@@ -928,7 +928,7 @@ int main(int argc,char **argv)
     	
     	//printf("%lf\n",(double) max(3e-3,4.4e-3));
     double  omega_m = 0.32;
-    double  H0 = 67.32*1.05e-6;
+    double  H0 = 67.32*1.05e-6; //Myr^-1
   //  double z =  0.0;    
     double a = 1/(1+z);
     double ti = (1.0/H0)*(2.0/3)*pow(1-omega_m,-0.5)*asinh(pow((1-omega_m)/omega_m,0.5)*pow(a,1.5));
@@ -985,12 +985,12 @@ int main(int argc,char **argv)
 /* Initial values*/
 	for (int i = 0; i < ncells; ++i){
 	//printf("%d\n",i);
-	nh[i] = 1e-3;
+	nh[i] = 1e-3; // in cm^-3
 	nh2[i][0] = x_min_fix*nh[i];
     	nhe2[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
     	nhe3[i][0] = x_min_fix*(Y/(4*(1-Y)))*nh[i];
     	nhe1[i][0] = 8.7e-5-nhe2[i][0]-nhe3[i][0];//(Y/(4*(1-Y)))*nh[i] - nhe2[i][0] - nhe3[i][0];
-	T[i][0] = 1e2;
+	T[i][0] = 1e2; // in K
 	NH[i][0] = cumsum(nh,nh2,i,0)*cellsize*3e7; // in nm^-2
     	NHe1[i][0] = hecumsum(nhe1,i,0)*cellsize*3e7 ;
     	NHe2[i][0] = hecumsum(nhe2,i,0)*cellsize*3e7 ;
@@ -1046,7 +1046,7 @@ for (int j=0;j<count;j++){
     
    if (cks==ncells-1)
    {
-        Dt = 3261.6*(epsilon/0.1)*(cellsize/10.0)*1e-6;//nm^-2//*(pow(3e21,2))/1e-14 ; // in kpc^-2 
+        Dt = 3261.6*(epsilon/0.1)*(cellsize/10.0)*1e-6; 
    }
    else{
    NHION = NH[cks+1][j];//nm^-2//*(pow(3e21,2))/1e-14 ; // in kpc^-2 
