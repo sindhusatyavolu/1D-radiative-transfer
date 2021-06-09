@@ -7,7 +7,7 @@
 #ifndef PI
 #define PI 3.1415
 #endif
-#define cellsize 0.15
+#define cellsize 0.01
 #define boxsize 15.0
 #define count 10000000
 #define countl 1000000000
@@ -1078,22 +1078,12 @@ t = clock() - t;
     printf("fun() took %f seconds to execute \n", time_taken);	    
 
 
- FILE *fptr = fopen("./c2raytest/gc2xh1_10myr_b2.txt","w");
- FILE *fdptr = fopen("./c2raytest/gc2xhe2_10myr_b2.txt","w");
-FILE *fd1ptr = fopen("./c2raytest/gc2xhe3_10myr_b2.txt","w");
-FILE *fd2ptr = fopen("./c2raytest/gc2T_10myr_b2.txt","w");
-FILE *fd3ptr = fopen("./c2raytest/gc2xhe1_10myr_b2.txt","w");
-/*
-FILE *fptr = fopen("intblum_alphacrct_xh1_001myr.txt","w");
-FILE *fdptr = fopen("intblum_alphacrct__T_001myr.txt","w");    
-*/
+ FILE *fptr = fopen("./c2raytest/dr001_newc2_1e3myr_b2.txt","w");
+
      	for (int l = 0; l < ncells; ++l)
     {
-    fprintf(fptr,"%lf %0.12e \n", (double)l*cellsize+cellsize,(nh[l]-nh2[l][storej])/nh[l]);
-	fprintf(fd2ptr,"%0.12e \n",T[l][storej]);
-    fprintf(fd3ptr,"%0.12e \n", nhe1[l][storej]/((Y/(4*(1-Y))*nh[l])));
-    fprintf(fdptr,"%0.12e \n",nhe2[l][storej]/((Y/(4*(1-Y))*nh[l])));
-    fprintf(fd1ptr,"%0.12e \n",nhe3[l][storej]/((Y/(4*(1-Y))*nh[l])));
+    fprintf(fptr,"%lf %0.12e %0.12e %0.12e %0.12e %0.12e\n", (double)l*cellsize+cellsize,(nh[l]-nh2[l][storej])/nh[l],T[l][storej],nhe1[l][storej]/((Y/(4*(1-Y))*nh[l])),nhe2[l][storej]/((Y/(4*(1-Y))*nh[l])),nhe3[l][storej]/((Y/(4*(1-Y))*nh[l])));
+
     } 
 	
 
