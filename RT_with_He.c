@@ -55,12 +55,12 @@ double GE(double Ti){
     double T5 =Ti/100000 ;
    // return 3.15e13*5.85e-11*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-157809.1/Ti);
     //return 3.15e13*1.17e-10*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-157809.1/Ti);//bolton
-   return  3.15e13*21.11*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.089)/pow(1+pow((lam/0.354),0.874),1.101) ;
+   return  3.15e13*21.11*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.089)/pow(1+pow((lam/0.354),0.874),1.101) ;   /* verified */
 }
 
 double betahe1(double Ti){
     double lam  = 2*285335/Ti;
-    return 3.15e13*32.38*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.146)/pow(1+pow((lam/0.416),0.987),1.056) ; // from HnG
+    return 3.15e13*32.38*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.146)/pow(1+pow((lam/0.416),0.987),1.056) ; // from HnG /* verified */
    // double T5 =Ti/100000 ;
     
    // return 3.15e13*2.38e-11*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-285335.4/Ti); //ramses
@@ -69,7 +69,7 @@ double betahe1(double Ti){
 
 double betahe2(double Ti){
     double lam = 2*631515/Ti;
-    return 3.15e13*19.95*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.089)/pow(1+pow((lam/0.553),0.735),1.275) ;
+    return 3.15e13*19.95*pow(Ti,-1.5)*exp(-lam/2)*pow(lam,-1.089)/pow(1+pow((lam/0.553),0.735),1.275) ;  /* verified */
     //double T5 =Ti/100000 ;
     //return 3.15e13*5.68e-12*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-631515.0/Ti); //ramses
     //return 3.15e13*1.14e-11*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-631515.0/Ti); //bolton
@@ -80,7 +80,7 @@ double ralpha(double Ti){
     double Th1 = 157807; 
     double lam = 2*Th1/Ti;
 
-   return 3.15e13*1.269e-13*pow(lam,1.503)/pow((1+pow(lam/0.522,0.47)),1.923);
+   return 3.15e13*1.269e-13*pow(lam,1.503)/pow((1+pow(lam/0.522,0.47)),1.923);	/* verified */
   //  double Tl = kb*Ti/1.6e-12;
   //  return 3.15e13*(exp(-28.6130338-0.72411256*log(Tl)-2.02604473e-2*log(pow(Tl,2))-2.38086188e-3*log(pow(Tl,3))-3.21260521e-4*log(pow(Tl,4))-1.42150291e-5*log(pow(Tl,5))+4.98910892e-6*log(pow(Tl,6))+5.75561414e-7*log(pow(Tl,7))-1.85676704e-8*log(pow(Tl,8))-3.07113524e-9*log(pow(Tl,9))));
 
@@ -90,7 +90,7 @@ double alphahe2(double Ti){
 
     double lam = 570670/Ti;
     double Tl = kb*Ti/1.6e-12;
-   return 3.15e13*3e-14*pow(lam,0.654);
+   return 3.15e13*3e-14*pow(lam,0.654);	/* verified */
 //   return 3.15e13*(3.925e-13*pow(Tl,-0.6353)+1.544e-9*pow(Tl,-1.5)*exp(-48.596/Tl)*(0.3+exp(8.1/Tl)));
 }
 
@@ -99,14 +99,14 @@ double alphahe3(double Ti){
   
     double lam = 1263030/Ti;
 
-    return 3.15e13*2.538e-13*pow(lam,1.503)/pow((1+pow(lam/0.522,0.47)),1.923);
+    return 3.15e13*2.538e-13*pow(lam,1.503)/pow((1+pow(lam/0.522,0.47)),1.923);	/* verified */
   //  return 2*ralpha(Ti/4);//bolton
 }
 
 
 double sigma(double f){
     double sigma_0=5.475 ; // in nm^2
-    double nu_0 = 0.4298 ;  
+    double nu_0 = 0.4298 ;  // in ev
     double y0 = 0;
     double x =  f/nu_0 - y0;
     double yw = 0;
@@ -114,7 +114,7 @@ double sigma(double f){
     double ya = 32.88 ;
     double y1  = 0 ;
     double y = sqrt(x*x+y1*y1);
-   return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);
+   return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);	/* verified */
   // return 6.3e-18*1e14*(1.34*pow(f/13.6,-2.99)-0.34*pow(f/13.6,-3.99)); //bolton cross sections
 }
 
@@ -128,7 +128,7 @@ double sigmahe1(double f){
     double ya = 1.469 ;
     double y1  = 2.136 ;
     double y = sqrt(x*x+y1*y1);
-    return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);
+    return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);	/* verified */
   //return 7.03e-18*1e14*(1.66*pow(f/24.6,-2.05)-0.66*pow(f/24.6,-3.05)); //bolton cross sections
 }
 
@@ -142,17 +142,17 @@ double sigmahe2(double f){
     double ya = 32.88 ;
     double y1  = 0 ;
     double y = sqrt(x*x+y1*y1);
-    return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);
+    return sigma_0*(pow((x-1),2)+pow(yw,2))*pow(y,0.5*P-5.5)/pow(1+sqrt(y/ya),P);	/* verified */
   //  return 1.5e-18*1e14*(1.34*pow(f/54.5,-2.99)-0.34*pow(f/54.5,-3.99)); //bolton
 }
 
 double PH1(double x,double nh1,double nhe1l,double nhe2l){
 	
     double qH = exp(-sigma(x)*nh1*cellsize*3e7);
-	double qHe1 = exp(-sigmahe1(x)*nhe1l*cellsize*3e7);
-    double 	qHe2 = exp(-sigmahe2(x)*nhe2l*cellsize*3e7)	;
-    double	tau_tot = sigma(x)*nh1*cellsize*3e7+sigmahe1(x)*nhe1l*cellsize*3e7+ sigmahe2(x)*nhe2l*cellsize*3e7;
-    double	D = (1-qH)*qHe2*qHe1 +(1-qHe1)*qH*qHe2 + (1-qHe2)*qH*qHe1;
+    double qHe1 = exp(-sigmahe1(x)*nhe1l*cellsize*3e7);
+    double qHe2 = exp(-sigmahe2(x)*nhe2l*cellsize*3e7)	;
+    double tau_tot = sigma(x)*nh1*cellsize*3e7+sigmahe1(x)*nhe1l*cellsize*3e7+ sigmahe2(x)*nhe2l*cellsize*3e7;
+    double D = (1-qH)*qHe2*qHe1 +(1-qHe1)*qH*qHe2 + (1-qHe2)*qH*qHe1;
     //printf("%0.12e\n",D);
     if (D ==0 || D!= D)
     {
@@ -593,18 +593,18 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     
     double T5 = Ti/100000.0;
     
-    double f1 = 1.778e-29*3.15e13;	//#*6.24e11 # in erg cm^3 Myr^-1 K^-1 #4.05   #
-    double f2 = 7.5e-19*3.15e13;	//#*6.24e11 # in erg cm^3 Myr^-1 #1.711e+11
-    double f3 = 1.42e-27*3.15e13;	//#*6.24e11# in erg cm^3 K^-1 #489.62
-    double gff = 1.5 ;	//# from cen #1.1+ 0.34*(np.exp(-5.5+np.log(T)))**2
-    double f4 = 5.65e-36*3.15e13;	//#*6.24e11 #in erg cm^3 Myr^-1 K^-1 #1.289e-6
-    double f5 = 1.27e-21*3.15e13;
+    double f1 = 1.778e-29*3.15e13;	//#*6.24e11 # in erg cm^3 Myr^-1 K^-1 #4.05   # /*verified*/
+    double f2 = 7.5e-19*3.15e13;	//#*6.24e11 # in erg cm^3 Myr^-1 #1.711e+11  /*verified*/
+    double f3 = 1.42e-27*3.15e13;	//#*6.24e11# in erg cm^3 K^-1 #489.62.    /*verified Cen*/
+    double gff = 1.5 ;	//# from cen #1.1+ 0.34*(np.exp(-5.5+np.log(T)))**2	/*verified*/
+    double f4 = 5.65e-36*3.15e13;	//#*6.24e11 #in erg cm^3 Myr^-1 K^-1 #1.289e-6	/*verified- Ramses*/
+    double f5 = 1.27e-21*3.15e13;	/*verified- Ramses and Cen*/
 
-    double f11 = 1.0;
-    double f12 = 8*1.778e-29*3.15e13;
-    double f21 = 3.15e13*5.54e-17;
+    double f11 = 1.0;	/*verified*/
+    double f12 = 8*1.778e-29*3.15e13;	/*verified*/
+    double f21 = 3.15e13*5.54e-17;	/*verified*/
    
-    double f51 = 3.15e13*9.38e-22;
+    double f51 = 3.15e13*9.38e-22;	
     double f52 = 3.15e13*4.95e-22;
 /*
     f11 = 1
@@ -628,7 +628,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
   //  double Y = 0;
   //  double xhe2 = 0; 
   //  double xhe3 = 0;
-    double nu = pow((X*(1+xh2i)+Y*(1+xhe2+2*xhe3)/4),(-1));
+    double nu = pow((X*(1+xh2i)+Y*(1+xhe2+2*xhe3)/4.0),(-1));
     if (K*nu==0 || nu!=nu)
     {
         printf("Knu is zero\n");
@@ -644,13 +644,13 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     double c4 = (f4)*(Ti-2.73*(1+z))*pow(1+z,4);  //inverse compton
     double c5 = f5*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-157809.1/Ti);// collisional Ionisation cooling
 
-    double c11 = f11*kb*Ti*alphahe2(Ti); // recombination cooling He II erg cm^3 Myr^-1
+    double c11 = f11*kb*Ti*alphahe2(Ti); // recombination cooling He II erg cm^3 Myr^-1 
     double c12 = f12*Ti*pow(lamb2,1.965)/pow((1.0+pow((lamb2/0.541),0.502)),2.697) ; // recombination cooling He III
         
     double c21 = f21*pow(Ti,-0.397)*pow((1+pow(T5,1.0/2)),-1)*exp(-473638.0/Ti);    //collisional excitation HeII erg cm^3 Myr^-1
 
-    double c51 = f51*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-285335.4/Ti);
-    double c52= f52*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-631515.0/Ti);
+    double c51 = f51*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-285335.4/Ti);	// collisional Ionisation cooling He2
+    double c52= f52*pow(Ti,0.5)*pow((1+pow(T5,0.5)),-1)*exp(-631515.0/Ti);	// collisional Ionisation cooling He3
     //double C =  c1*pow((xh2i*nhi),2) +c2*xh2i*nhi*(nh1)+c3*pow((nhi*xh2i),2) +c4*(nhi*xh2i) + 2*Hubble(tsim)*Ti/(K*nu) ;//+ (Ti/(nhi*xh2i))*(*xrate);
     
     double C; 
@@ -660,7 +660,7 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
     C = c1*ne*xh2i*nhi + c11*ne*nhe2l + c12*ne*nhe3l +c2*ne*nh1 + c21*ne*nhe2l + c3*(nhi*xh2i+nhe2l+4*nhe3l)*ne + c4*ne + c5*ne*nh1+ c51*ne*nhe1l+ c52*ne*nhe2l +2*Hubble(tsim)*Ti/(K*nu)+ *(xrate)*(Ti/n)/(K*nu);
     if (C != C)
     {
-        printf("Cooling is gone bonkers\n");
+        printf("Cooling has error\n");
         printf("c1 %0.12e\n", c1);
         printf("c11 %0.12e\n", c11);
         printf("c12 %0.12e\n", c12);
@@ -699,7 +699,8 @@ double Tsolve(double Ti,double NH1,double Nhe1,double Nhe2,double xh2i,double xh
    // printf("%e\n", K)
 	//printf("%e %e\n",fh*vol*Heat(NH1,nh1,nhe1,nhe2)-C, dti);
     *(trate) = L*K*nu;
-   return Ti+ dti*L*K*nu;
+   
+     return Ti+ dti*L*K*nu;
    //return Ti + nu*dti*L*K/(1-nu*dLdt*K*dti) ;
    //return (L*K*nu*dti + Ti)/(1+2*Hubble(tsim)*dti) ; // anninos implicit
 }
@@ -912,8 +913,8 @@ double evolve_eqns(double *nh,double **nh2,double **NH,double **nhe1,double **nh
 }
 	for(int k=0;k<ncells;k++){
 	NH[k][j+1] = cumsum(nh,nh2,k,j+1)*cellsize*3e7; // in cm^-2
-    NHe1[k][j+1] = hecumsum(nhe1,k,j+1)*cellsize*3e7 ;
-    NHe2[k][j+1] = hecumsum(nhe2,k,j+1)*cellsize*3e7 ;
+    	NHe1[k][j+1] = hecumsum(nhe1,k,j+1)*cellsize*3e7 ;
+    	NHe2[k][j+1] = hecumsum(nhe2,k,j+1)*cellsize*3e7 ;
 }
 		return dt_rec;
 }
