@@ -1019,7 +1019,27 @@ double dt_new;
 double RIF;
 double NHION;
 int cks;
-
+for (int ck = 0; ck < ncells; ++ck)
+    {
+        if (nh2[ck][0]/nh[ck]<=0.5)
+        {
+            RIF = (1+ck)*cellsize;
+            cks =ck;
+            break; 
+        }
+    }
+    printf("RIF %0.12e\n",RIF );
+/*
+NHION = NH[cks+1][0];//nm^-2//*(pow(3e21,2))/1e-14 ; // in kpc^-2 
+   printf("%0.12e %d\n",NHION,cks );
+   Dt = 4*PI*pow(RIF*3e28,2)*NHION*pow(Ng,-1); //in Myr
+   printf("Dt %0.12e\n",Dt );
+for (int i = 0; i < ncells; ++i)
+{
+  dt[i][0] =Dt;
+}
+*/
+	
 for (int j=0;j<count;j++){
 	tsim = ti + Dt;
 	//printf("%d\n",j);	
@@ -1052,8 +1072,8 @@ for (int j=0;j<count;j++){
    else{
    NHION = NH[cks+1][j];//nm^-2//*(pow(3e21,2))/1e-14 ; // in kpc^-2 
    printf("%0.12e %d\n",NHION,cks );
-   Dt = 4*PI*pow(RIF*3e28,2)*NHION*pow(Ng,-1); //in Myr
-   printf("Dt %0.12e\n",Dt );    
+   Dt = 4*PI*pow(RIF*3e28,2)*NHION*pow(Ng,-1); //in Myr.  /* Davies timestep as initial guess would be too large if the initial medium is already highly ionised- Use fixed global time step instead */
+   printf("Dt %0.12e\n",Dt );     
    }
    
 }
