@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "math.h": "c",
+        "photoion.h": "c",
+        "stdlib.h": "c",
+        "params.h": "c",
+        "save_outputs.h": "c",
+        "time.h": "c",
+        "proximity_zone.h": "c",
+        "constants.h": "c",
+        "utils.h": "c",
+        "rates.h": "c",
+        "string.h": "c",
+        "omp.h": "c"
+    }
+}
