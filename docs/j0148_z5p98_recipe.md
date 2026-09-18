@@ -187,10 +187,29 @@ As in the archived FIRE files, the optical-depth coordinate includes a
 256-pixel redward offset. For an analysis distance anchored at Ly-alpha,
 use `(distance_ckpc - distance_ckpc[256]) / (1000 * (1 + 5.98))`.
 
-## Using another neutral-fraction snapshot
+## 6. Generate the full Section 3.1 neutral-fraction/lifetime grid
 
-For a snapshot at exact redshift `z_snapshot`, select its `f1k`/`l1k` input
-prefixes and recompute
+The preceding commands generate the five lifetimes for only the `z5.95`
+neutral-fraction snapshot. Section 3.1 actually uses **eight** ATON neutral
+fractions and five lifetimes, giving **40 quasar arrays per quasar**. The
+paper's grid and the matching local inputs are:
+
+| Input label | Exact snapshot redshift | Paper xHI | Density multiplier | Comoving-length multiplier |
+| --- | ---: | ---: | ---: | ---: |
+| `5.11` | 5.109794 | 0.000037 | 1.491030628969911 | 1.305141832478022 |
+| `5.76` | 5.755954 | 0.07 | 1.102824018888211 | 1.067425263854425 |
+| `5.95` | 5.945518 | 0.13 | 1.014967986851703 | 1.009953928667946 |
+| `6.15` | 6.148904 | 0.21 | 0.930781778044320 | 0.953305096875094 |
+| `6.60` | 6.604205 | 0.37 | 0.773401159217978 | 0.842564607726525 |
+| `7.14` | 7.139393 | 0.54 | 0.630652632429148 | 0.735405389946330 |
+| `8.15` | 8.150086 | 0.75 | 0.443905718806707 | 0.581916261170944 |
+| `9.55` | 9.545964 | 0.89 | 0.289939519228990 | 0.438064718046739 |
+
+The `z6.37` files present in the local input directory are an additional
+snapshot; `z6.37` is not one of the eight neutral-fraction points listed in
+Section 3.1. Therefore a paper-matched grid is 8 x 5, not 9 x 5.
+
+For every row, the driver computes
 
 ```text
 A = (1 + 5.98) / (1 + z_snapshot)
@@ -198,7 +217,92 @@ density_multiplier = A^3
 comoving_length_scale = A^2
 ```
 
-The snapshot supplies initial xHI and temperature. Multiplying nH and nHI
-together preserves xHI while moving the physical density normalization to
-z=5.98. Keep `--z-sim 5.98 --z-qso 5.98`; do not replace the runtime redshift
-with the snapshot redshift.
+and always passes `--z-sim 5.98 --z-qso 5.98`. The snapshot supplies initial
+`xHI`, temperature, peculiar velocity, density structure, and background
+rates. Scaling `nH` and `nHI` together preserves that snapshot's `xHI` while
+moving its physical density normalization to the quasar redshift.
+
+### Eight xHI values at one fixed lifetime
+
+For example, this command runs all eight neutral-fraction snapshots at fixed
+`tQ=1 Myr`:
+
+```bash
+/Users/ssatyavolu/miniconda3/bin/python tools/run_aton_section31_grid.py run \
+  --rte ./rte1d_opt \
+  --input-dir /Users/ssatyavolu/projects/fireqso_dominika \
+  --output-root outputs/j0148_z5p98_m2739/section31_grid \
+  --z-qso 5.98 --m1450 -27.39 \
+  --tq-grid 1 \
+  --los 0:999 --workers 6 --resume
+```
+
+This writes one text file per sightline under a separate directory for each
+snapshot, for example `qso/xhi_z6.15/`. The separation is necessary because
+the text filenames identify the actual quasar redshift (`z5.98`) rather than
+the neutral-fraction snapshot.
+
+Assemble the eight resulting arrays with:
+
+```bash
+/Users/ssatyavolu/miniconda3/bin/python tools/run_aton_section31_grid.py assemble \
+  --output-root outputs/j0148_z5p98_m2739/section31_grid \
+  --z-qso 5.98 --m1450 -27.39 \
+  --tq-grid 1 \
+  --los 0:999
+```
+
+### Full eight-xHI by five-lifetime grid
+
+Omitting `--tq-grid 1` selects the five paper-grid lifetimes by default:
+`0.01, 0.1, 1, 10, 100 Myr`. Run all 40 combinations with:
+
+```bash
+/Users/ssatyavolu/miniconda3/bin/python tools/run_aton_section31_grid.py run \
+  --rte ./rte1d_opt \
+  --input-dir /Users/ssatyavolu/projects/fireqso_dominika \
+  --output-root outputs/j0148_z5p98_m2739/section31_grid \
+  --z-qso 5.98 --m1450 -27.39 \
+  --los 0:999 --workers 6 --resume
+```
+
+After all text outputs finish, assemble all 40 arrays:
+
+```bash
+/Users/ssatyavolu/miniconda3/bin/python tools/run_aton_section31_grid.py assemble \
+  --output-root outputs/j0148_z5p98_m2739/section31_grid \
+  --z-qso 5.98 --m1450 -27.39 \
+  --los 0:999
+```
+
+The arrays are written under `section31_grid/npy/`. Their names contain both
+the neutral-fraction snapshot label and actual quasar redshift, for example:
+
+```text
+qso_z6.15_zqso5.98_m-27.39_tq1e+00_los.npy
+```
+
+Each complete array has shape `(1000, 891, 7)`. To run only selected snapshots,
+add, for example, `--snapshots 5.95 6.15 6.60` to both the `run` and `assemble`
+commands.
+
+### Matched no-quasar arrays for all eight xHI values
+
+The pre-quasar grid has no lifetime dimension, so it contains eight arrays:
+
+```bash
+/Users/ssatyavolu/miniconda3/bin/python tools/run_aton_section31_grid.py run \
+  --rte ./rte1d_opt \
+  --input-dir /Users/ssatyavolu/projects/fireqso_dominika \
+  --output-root outputs/j0148_z5p98_m2739/section31_grid \
+  --z-qso 5.98 --m1450 -27.39 \
+  --los 0:999 --workers 6 --resume --initial-only
+
+/Users/ssatyavolu/miniconda3/bin/python tools/run_aton_section31_grid.py assemble \
+  --output-root outputs/j0148_z5p98_m2739/section31_grid \
+  --z-qso 5.98 --m1450 -27.39 \
+  --los 0:999 --initial-only
+```
+
+These no-quasar arrays represent the rescaled state immediately before quasar
+turn-on for each of the eight input snapshots.
