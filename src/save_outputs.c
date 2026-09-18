@@ -6,7 +6,7 @@
 #include "../include/constants.h"
 #include "../include/utils.h"
 
-char *outfilename(int los, float Mag, double t_on,double fduty, double z, double tq){
+char *outfilename(const char *output_dir, int los, float Mag, double t_on,double fduty, double z, double tq){
 	char *fileSpec;
 	int Length2;
 	char *bet2;
@@ -20,11 +20,11 @@ char *outfilename(int los, float Mag, double t_on,double fduty, double z, double
 	bet = malloc(Length);
 	sprintf(bet, "%0.2lf", z);
 
-	String_len1 = snprintf(NULL, 0, "z%sLOS%dtq%gmag%s_tep_%gMyr%gfd.txt",
-						   bet, los, tq, bet2, t_on, fduty) + 1;
+	String_len1 = snprintf(NULL, 0, "%s/z%sLOS%dtq%gmag%s_tep_%gMyr%gfd.txt",
+						   output_dir, bet, los, tq, bet2, t_on, fduty) + 1;
 	fileSpec = malloc(String_len1);
-	sprintf(fileSpec, "z%sLOS%dtq%gmag%s_tep_%gMyr%gfd.txt",
-			bet, los, tq, bet2, t_on, fduty);
+	sprintf(fileSpec, "%s/z%sLOS%dtq%gmag%s_tep_%gMyr%gfd.txt",
+			output_dir, bet, los, tq, bet2, t_on, fduty);
 
 	free(bet);
 	free(bet2);

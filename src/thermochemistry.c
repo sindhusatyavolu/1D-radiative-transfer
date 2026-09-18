@@ -308,7 +308,7 @@ double Tsolve(double Tu, double NH1, double Nhe1, double Nhe2,
 	double c5 = kb * Th1 * GE(Ti);									// from HnG in erg cm^3 Myr^-1
 	//      f5*pow(Ti,0.5)*pow((1.0+pow(T5,0.5)),-1)*exp(-157809.1/Ti);// collisional Ionisation cooling
 	double c11;
-	if (5e3 < Ti && Ti < 5e5)
+	if ((legacy_alphahe2_bug && 5e3 < Ti < 5e5) || (!legacy_alphahe2_bug && 5e3 < Ti && Ti < 5e5))
 	{
 		c11 = f11 * kb * Ti * alphahe2(Ti); // recombination cooling He II erg cm^3 Myr^-1
 	}

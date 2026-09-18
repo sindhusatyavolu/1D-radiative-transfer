@@ -21,11 +21,13 @@ double z_qso = 5.95;
 
 /* simulation */
 int Ncells = 2048;
+int num_pixels_redward = 0;
+int legacy_alphahe2_bug = 0;
 double cellsize = 114.88970588235293, boxsize = 235294.118, hubble_inv = 1.0, Roffset = 114.88970588235293;
 
 /* IGM */
 double background = 1.0;
-double Gammabkg[2048];
-double Gammabkg_he1[2048];
-double Gammabkg_he2[2048];
-double Heat_bkg[2048];
+double Gammabkg[RTE_MAX_CELLS];
+double Gammabkg_he1[RTE_MAX_CELLS];
+double Gammabkg_he2[RTE_MAX_CELLS];
+double Heat_bkg[RTE_MAX_CELLS];

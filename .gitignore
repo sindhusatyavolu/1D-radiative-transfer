@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+rte1d_opt
+outputs/
+example_input_files/regenerated_direct/
+example_input_files/z6p15_f1/
+example_input_files/dom_zloc_M3_spec_z5.946.dat
+inputs/z6p15_uionbg/

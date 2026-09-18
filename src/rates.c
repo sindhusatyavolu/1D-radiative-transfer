@@ -81,7 +81,7 @@ double alphahe2(double Ti)
 	double b = 0.6910;
 	double T0 = 15.54;
 	double T1 = 3.676e7;
-	if (5e3 < Ti && Ti < 5e5)
+	if ((legacy_alphahe2_bug && 5e3 < Ti < 5e5) || (!legacy_alphahe2_bug && 5e3 < Ti && Ti < 5e5))
 	{
 		return timefac * 3e-14 * pow(lam, 0.654); // HnG 97
 	}

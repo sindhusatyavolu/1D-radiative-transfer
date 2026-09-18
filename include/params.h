@@ -1,6 +1,11 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
+/* Override at compile time for long lightcones; ordinary runs retain 2048. */
+#ifndef RTE_MAX_CELLS
+#define RTE_MAX_CELLS 2048
+#endif
+
 /* Define global variables */
 
 extern double epsilon; // Courant factor; unused in this version
@@ -24,6 +29,8 @@ extern double tq;	   // quasar life time in Myr
 
 /* simulation */
 extern int Ncells;
+extern int num_pixels_redward;
+extern int legacy_alphahe2_bug;
 extern double cellsize, boxsize, hubble_inv, Roffset;
 
 /* IGM */
@@ -37,6 +44,3 @@ extern double Heat_bkg[];
 void read_params_from_config(const char *filename);
 
 #endif 
-
-
-

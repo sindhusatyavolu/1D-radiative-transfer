@@ -14,8 +14,8 @@
 /* Routine for computing the Lyman alpha optical depth and spectrum */
 double absorb_along_lines_of_sight(double *Temp, double *NHI, double *Vpec, double *Tau)
 {
-	int ncells = boxsize * hubble_inv / (cellsize * hubble_inv);
-	int extra = 0; // number of cells to be included redward of the Lyman alpha line. Set to zero if you want the first cell of the sightline to be the location of the Lyman alpha line
+	int ncells = Ncells;
+	int extra = num_pixels_redward; // number of cells included redward of the Lyman-alpha line
 	int encells = ncells + extra;
 
 	double dz, dv, b, fac, aa;
@@ -107,8 +107,13 @@ double absorb_along_lines_of_sight(double *Temp, double *NHI, double *Vpec, doub
 	}
 	/* compute proximity zone size */
 	int lenY;
-	double h[2048 + extra];
-	for (int k = 0; k < 2048 + extra; k++)
+	double *h = (double *)malloc(encells * sizeof(double));
+	if (h == NULL)
+	{
+		fprintf(stderr, "Failed to allocate Lyman-alpha smoothing buffer\n");
+		exit(1);
+	}
+	for (int k = 0; k < encells; k++)
 	{
 		h[k] = exp(-Tau[k]);
 	}
@@ -117,7 +122,7 @@ double absorb_along_lines_of_sight(double *Temp, double *NHI, double *Vpec, doub
 	{
 		xs[i] = 1.0;
 	}
-	double *yt = convolve(h, xs, 2048 + extra, 60, &lenY);
+	double *yt = convolve(h, xs, encells, 60, &lenY);
 
 	//	free(yt);
 	//	printf("rp %0.12e\n",Rp(yt,2048));
@@ -125,7 +130,10 @@ double absorb_along_lines_of_sight(double *Temp, double *NHI, double *Vpec, doub
 	//  if(Ng ==0)
 	//   return 0.0;
 	//  else
-	return Rp(yt, 2048 + extra);
+	double rp = Rp(yt, encells);
+	free(yt);
+	free(h);
+	return rp;
 	//	return 1;
 }
 
