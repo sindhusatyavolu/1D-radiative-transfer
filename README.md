@@ -130,6 +130,13 @@ commands for applying the Section 3.1 snapshot rescaling to a quasar at
 z=5.98 and M1450=-27.39, including all five lifetimes, 1000 sightlines,
 matched pre-quasar spectra, and NumPy assembly.
 
+The [attached M1450=-26.76 z5.11 reproduction](docs/attached_m2676_z5p11_reproduction.md)
+documents a separate legacy case at tq=0.01 Myr. The array uses all z5.11
+input fields, runtime RT/spectral redshift 6.604205, no redshift density or
+length rescaling, float32 magnitude precision, and a recovered 960-sightline
+selection. It includes exact compatibility commands and explains why the
+new Section 3.1 driver intentionally produces a different result.
+
 The [corrected-redshift FIRE pair](docs/corrected_fire_z6p15_pair.md) generates
 the z6.15, M1450=-27.09, 1 Myr array with runtime cosmology at the actual
 snapshot redshift 6.148904, plus a matched pre-quasar array. It preserves

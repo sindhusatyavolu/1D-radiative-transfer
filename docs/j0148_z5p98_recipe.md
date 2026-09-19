@@ -7,6 +7,11 @@ to ULAS J0148+0600. The quasar is not one of the
 an application of its simulation method to J0148 rather than a reproduction
 of one of that paper's saved J0148 model files.
 
+This is a recipe for a new, Section 3.1-style grid. It is deliberately
+different from the compatibility settings required to reproduce some legacy
+`.npy` arrays. For a concrete example and exact legacy commands, see the
+[M1450=-26.76 z5.11 archive reproduction](attached_m2676_z5p11_reproduction.md).
+
 ## Snapshot and rescaling
 
 Use the snapshot labelled `z5.95`, whose exact redshift is
