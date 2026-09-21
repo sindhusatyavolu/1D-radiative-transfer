@@ -230,7 +230,7 @@ double PH1(double x, double nh1, double nhe1l, double nhe2l, double t)
 	{
 		printf("D %0.12e\n", D);
 		printf("%0.12e %0.12e %0.12e\n", nh1, nhe1l, nhe2l);
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 	return (1 - qH) * qHe2 * qHe1 * (1 - exp(-tau_tot)) / D;
 }

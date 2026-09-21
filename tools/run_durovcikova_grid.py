@@ -44,7 +44,13 @@ def load_los_file(path: Path) -> list[int]:
     return los
 
 
-def run_command(command: list[str], dry_run: bool, log: Path | None = None) -> None:
+def run_command(
+    command: list[str],
+    dry_run: bool,
+    log: Path | None = None,
+    expected_output: Path | None = None,
+    n_cells: int | None = None,
+) -> None:
     print(" ".join(command))
     if dry_run:
         return
@@ -71,6 +77,14 @@ def run_command(command: list[str], dry_run: bool, log: Path | None = None) -> N
                 _active_processes.discard(process)
         if stream is not None:
             stream.close()
+
+    if expected_output is not None:
+        if n_cells is None:
+            raise ValueError("n_cells is required when validating solver output")
+        if not complete_output(expected_output, n_cells):
+            raise RuntimeError(
+                f"solver returned success but did not create a complete output: {expected_output}"
+            )
 
 
 def terminate_active_processes() -> None:
@@ -193,7 +207,7 @@ def main() -> None:
     if args.legacy_float_magnitude:
         magnitude = struct.unpack("f", struct.pack("f", magnitude))[0]
 
-    jobs: list[tuple[list[str], Path | None]] = []
+    jobs: list[tuple[list[str], Path | None, Path]] = []
     for tq in ([0.0] if args.initial_only else args.tq_grid):
         t_on = args.t_on if args.t_on is not None else (1.0 if args.initial_only else tq)
         for row, los in enumerate(los_values):
@@ -235,22 +249,25 @@ def main() -> None:
             if args.resume and complete_output(output, args.n_cells):
                 print(f"skip complete {output}")
                 continue
-            jobs.append((command, log))
+            jobs.append((command, log, output))
 
     if args.dry_run or args.workers == 1:
-        for command, log in jobs:
-            run_command(command, args.dry_run, log)
+        for command, log, output in jobs:
+            run_command(command, args.dry_run, log, output, args.n_cells)
         return
     if not jobs:
         print("all requested outputs are already complete")
         return
     pool = ThreadPoolExecutor(max_workers=args.workers)
-    futures = {pool.submit(run_command, command, False, log): (command, log)
-               for command, log in jobs}
+    futures = {
+        pool.submit(run_command, command, False, log, output, args.n_cells):
+        (command, log, output)
+        for command, log, output in jobs
+    }
     try:
         completed = 0
         for future in as_completed(futures):
-            command, log = futures[future]
+            command, log, _ = futures[future]
             try:
                 future.result()
             except Exception as error:

@@ -22,11 +22,11 @@ double evolve_eqns(double *nh, double **nh2, double **NH, double **nhe1, double 
 	//	double xhe2 =0;
 	//	double xhe3 =0;
 	long int out;
-	double *Tt = (double *)malloc(max_subcycling_steps * sizeof(double));
-	double *xh2t = (double *)malloc(max_subcycling_steps * sizeof(double));
-	double *xhe1t = (double *)malloc(max_subcycling_steps * sizeof(double));
-	double *xhe2t = (double *)malloc(max_subcycling_steps * sizeof(double));
-	double *xhe3t = (double *)malloc(max_subcycling_steps * sizeof(double));
+	double *Tt = (double *)malloc((max_subcycling_steps + 1) * sizeof(double));
+	double *xh2t = (double *)malloc((max_subcycling_steps + 1) * sizeof(double));
+	double *xhe1t = (double *)malloc((max_subcycling_steps + 1) * sizeof(double));
+	double *xhe2t = (double *)malloc((max_subcycling_steps + 1) * sizeof(double));
+	double *xhe3t = (double *)malloc((max_subcycling_steps + 1) * sizeof(double));
 	double dt_rec;
 	double *Rcell = (double *)malloc(ncells * sizeof(double));
 	for (int k = 0; k < ncells; k++)
@@ -45,7 +45,13 @@ double evolve_eqns(double *nh, double **nh2, double **NH, double **nhe1, double 
 		// equivalent of cool_step routine of Ramses RT (Rosdahl et al 2013)
 		while ((out == 100000000000 || out == 100000000001 || out == 100000000002 || out == 100000000003))
 		{
-			dt[k][j] = (double)max(dt_min, dt[k][j] / 2);
+			const double retry_floor = out == 100000000003 ? emergency_dt_min : dt_min;
+			if (dt[k][j] <= retry_floor)
+			{
+				fprintf(stderr, "Chemistry update remains nonphysical at minimum timestep %.12e Myr\n", retry_floor);
+				exit(EXIT_FAILURE);
+			}
+			dt[k][j] = (double)max(retry_floor, dt[k][j] / 2);
 			//      printf("%ld %e\n",out-100000000000, dt[k][j]);
 			out = xTiter(dt[k][j], NH[k][j], NHe1[k][j], NHe2[k][j], Rcell[k], nh[k], tsim, ti, Tt, xh2t, xhe1t, xhe2t, xhe3t, &dt_rec, Gammabkg[k], Gammabkg_he1[k], Gammabkg_he2[k], Heat_bkg[k]);
 		}

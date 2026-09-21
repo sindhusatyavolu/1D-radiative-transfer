@@ -48,7 +48,7 @@ double xh2solve(double Tu, double xh2, double xhe1, double xhe2, double xhe3, do
 		printf("H1 gone wrong\n");
 		printf("gamma %0.12e %0.12e %0.12e\n", fac * vol, Gamma(NH1, Nhe1, Nhe2, nh1, nhe1l, nhe2l, t), 1 / (nh1));
 		printf("elec coll %0.12e %0.12e\n", GE(Ti), ne);
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	dbdt = -2.91364 * exp(-157809.1 / Ti) / pow((1 + 0.00316228 * pow(Ti, 0.5)), 2) + 2.90803 * exp(-157809.1 / Ti) / ((1 + 0.00316228 * pow(Ti, 0.5)) * pow(Ti, 1.5)) + 921.375 * exp(-157809.1 / Ti) / ((1 + 0.00316228 * pow(Ti, 0.5)) * pow(Ti, 0.5));
@@ -113,7 +113,9 @@ double xhe1solve(double Tu, double xh2i, double xhe1, double xhe2, double xhe3, 
 		printf("He1 gone wrong\n");
 		printf("gamma %0.12e %0.12e %0.12e\n", fac * vol, Gammahe1(NH1, Nhe1, Nhe2, nh1, nhe1l, nhe2l, t), 1 / (nhe1l));
 		printf("elec coll %0.12e,%0.12e, %0.12e\n", xhe2, betahe1(Ti), ne);
-		exit(0);
+		printf("state T=%0.12e Tu=%0.12e xHII=%0.12e xHeI=%0.12e xHeII=%0.12e xHeIII=%0.12e dt=%0.12e\n",
+			Ti, Tu, xh2i, xhe1, xhe2, xhe3, dti);
+		exit(EXIT_FAILURE);
 	}
 
 	// printf("C %e D %e\n",C,D );
@@ -121,7 +123,7 @@ double xhe1solve(double Tu, double xh2i, double xhe1, double xhe2, double xhe3, 
 	if ((nhe1l + D * dti) == 0)
 	{
 		printf("xhe1 denom is zero\n");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	return min(1.0 - x_min_fix, max(x_min_fix, (xhe1 + C * dti) / (1 + D * dti)));
@@ -165,7 +167,7 @@ double xhe2solve(double Tu, double xh2i, double xhe1, double xhe2, double xhe3, 
 		printf("He2 gone wrong\n");
 		printf("gamma %0.12e %0.12e %0.12e\n", fac * vol, Gammahe1(NH1, Nhe1, Nhe2, nh1, nhe1l, nhe2l, t), 1 / (nhe2l));
 		printf("elec coll %0.12e,%0.12e, %0.12e\n", xhe1, betahe1(Ti), ne);
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	*(hrate) = (C - D * xhe2);
@@ -173,7 +175,7 @@ double xhe2solve(double Tu, double xh2i, double xhe1, double xhe2, double xhe3, 
 	if ((1 + D * dti) == 0)
 	{
 		printf("xhe2 denom is zero\n");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 	return min(1.0 - x_min_fix, max(x_min_fix, (xhe2 + C * dti) / (1 + D * dti)));
 	//	return xhe2 + (C-D*xhe2)*dti;
@@ -215,13 +217,13 @@ double xhe3solve(double Tu, double xh2i, double xhe1, double xhe2, double xhe3, 
 		printf("He3 gone wrong\n");
 		printf("gamma %0.12e %0.12e %0.12e \n", fac * vol, Gammahe2(NH1, Nhe1, Nhe2, nh1, nhe1l, nhe2l, t), xhe2 / (nhe2l));
 		printf("elec coll %0.12e %0.12e, %0.12e\n", xhe2, ne, betahe2(Ti));
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	if ((1 + D * dti) == 0)
 	{
 		printf("xhe3 denom is zero\n");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	return min(1.0 - x_min_fix, max(x_min_fix, (xhe3 + C * dti) / (1 + D * dti)));
@@ -296,7 +298,7 @@ double Tsolve(double Tu, double NH1, double Nhe1, double Nhe2,
 	{
 		printf("Knu is zero\n");
 		printf("nu %0.12e, %0.12e,%0.12e,%0.12e\n", nu, xh2i, xhe2, xhe3);
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	double zz = 1.0 / ascale(t) - 1.0;
@@ -337,7 +339,7 @@ double Tsolve(double Tu, double NH1, double Nhe1, double Nhe2,
 		printf("c51 %0.12e\n", c51);
 		printf("c52 %0.12e\n", c52);
 		printf("H %0.12e, %0.12e, %0.12e\n", 2 * Hubble(tsim), Ti, (K * nu));
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 	double bheat1, bheat2, bheat3;
 	if (background == 1)
@@ -380,7 +382,7 @@ double Tsolve(double Tu, double NH1, double Nhe1, double Nhe2,
 long int xTiter(double dti, double NH1, double Nhe1, double Nhe2, double R, double nhi,
 				double tsim, double ti, double *Tt, double *xh2t, double *xhe1t, double *xhe2t, double *xhe3t, double *dtrec, double gbkg, double gbkg_he1, double gbkg_he2, double heatbg)
 {
-	int storei = 0;
+	int storei = -1;
 	double frac_change = 0.0;
 	// double ne_init;
 	double dUU;
@@ -395,11 +397,38 @@ long int xTiter(double dti, double NH1, double Nhe1, double Nhe2, double R, doub
 	tcal = ti;
 	for (int i = 0; i < max_subcycling_steps; i++)
 	{
+		double step_frac_change = 0.0;
+		/* Roundoff in the legacy closure can leave a species a few ulps
+		 * below zero when the state is copied into the next global step. */
+		if (xhe1t[i] < 0.0 && xhe1t[i] >= -1e-12)
+			xhe1t[i] = x_min_fix;
+		if (xhe2t[i] < 0.0 && xhe2t[i] >= -1e-12)
+			xhe2t[i] = x_min_fix;
+		if (xhe3t[i] < 0.0 && xhe3t[i] >= -1e-12)
+			xhe3t[i] = x_min_fix;
+		if (!isfinite(Tt[i]) || !isfinite(xh2t[i]) || !isfinite(xhe1t[i]) ||
+			!isfinite(xhe2t[i]) || !isfinite(xhe3t[i]) || Tt[i] <= 0.0 ||
+			xh2t[i] < 0.0 || xhe1t[i] < 0.0 || xhe2t[i] < 0.0 || xhe3t[i] < 0.0)
+		{
+			if (dti <= emergency_dt_min)
+				fprintf(stderr, "invalid chemistry input state at emergency timestep: T=%.12e xHII=%.12e xHeI=%.12e xHeII=%.12e xHeIII=%.12e\n",
+					Tt[i], xh2t[i], xhe1t[i], xhe2t[i], xhe3t[i]);
+			return 100000000003;
+		}
 		Tt[i + 1] = (double)Tsolve(Tt[i], NH1, Nhe1, Nhe2, xh2t[i], xhe1t[i], xhe2t[i], xhe3t[i], nhi, dti, R, tsim, &Trate, &nerate, tcal, gbkg, gbkg_he1, gbkg_he2, heatbg);
+		if (!isfinite(Tt[i + 1]) || Tt[i + 1] <= 0.0)
+		{
+			if (dti <= emergency_dt_min)
+				fprintf(stderr, "invalid temperature update at emergency timestep: %.12e\n", Tt[i + 1]);
+			return 100000000003;
+		}
 		dUU = (double)fabs(max(T2_MIN_FIX, Tt[i] + Trate * dti) - Tt[i]);
+		const double temperature_change =
+			(double)max(dUU, fabs(Tt[i + 1] - Tt[i])) / (Tt[i] + T_MIN);
+		step_frac_change = max(step_frac_change, temperature_change);
 
 		/* Sub cycling condition */
-		if ((double)max(dUU, fabs(Tt[i + 1] - Tt[i])) / (Tt[i] + T_MIN) > lim && dti > dt_min)
+		if (temperature_change > lim && dti > dt_min)
 		{
 			return 100000000000;
 		}
@@ -409,9 +438,20 @@ long int xTiter(double dti, double NH1, double Nhe1, double Nhe2, double R, doub
 		}
 
 		xh2t[i + 1] = (double)max(x_min_fix, xh2solve(Tt[i + 1], xh2t[i], xhe1t[i], xhe2t[i], xhe3t[i], dti, NH1, Nhe1, Nhe2, R, nhi, &Xrate, tcal, gbkg));
+		if (!isfinite(xh2t[i + 1]))
+		{
+			if (dti <= emergency_dt_min)
+				fprintf(stderr, "invalid hydrogen update at emergency timestep\n");
+			return 100000000003;
+		}
 
 		/*complete this exactly?*/
-		if ((double)max(fabs(xh2t[i + 1] - xh2t[i]), Xrate * dti) / (xh2t[i] + X_FM) > lim && dti > dt_min)
+		const double hydrogen_change =
+			(double)max(fabs(xh2t[i + 1] - xh2t[i]), fabs(Xrate * dti)) / (xh2t[i] + X_FM);
+		step_frac_change = max(step_frac_change, hydrogen_change);
+		const double legacy_hydrogen_change =
+			(double)max(fabs(xh2t[i + 1] - xh2t[i]), Xrate * dti) / (xh2t[i] + X_FM);
+		if (legacy_hydrogen_change > lim && dti > dt_min)
 		{
 			return 100000000001;
 		}
@@ -426,24 +466,73 @@ long int xTiter(double dti, double NH1, double Nhe1, double Nhe2, double R, doub
 		xhe2t[i + 1] = (double)max(x_min_fix, xhe2solve(Tt[i + 1], xh2t[i + 1], xhe1t[i], xhe2t[i], xhe3t[i], dti, NH1, Nhe1, Nhe2, R, nhi, &he2rate, tcal, gbkg_he1, gbkg_he2));
 
 		xhe3t[i + 1] = (double)max(x_min_fix, xhe3solve(Tt[i + 1], xh2t[i + 1], xhe1t[i], xhe2t[i + 1], xhe3t[i], dti, NH1, Nhe1, Nhe2, R, nhi, &he3rate, tcal, gbkg_he2));
+		if (!isfinite(xhe1t[i + 1]) || !isfinite(xhe2t[i + 1]) || !isfinite(xhe3t[i + 1]))
+		{
+			if (dti <= emergency_dt_min)
+				fprintf(stderr, "invalid helium solve at emergency timestep\n");
+			return 100000000003;
+		}
 
 		if (xhe1t[i + 1] + xhe2t[i + 1] + xhe3t[i + 1] != 1e0)
 		{
 			if (max(max(xhe2t[i + 1], xhe3t[i + 1]), xhe1t[i + 1]) == xhe2t[i + 1])
 			{
-				xhe2t[i + 1] = 1 - xhe1t[i + 1] - xhe3t[i + 1];
+				/* Reject a step whose legacy closure would make He II
+				 * negative.  evolve_eqns will retry with a smaller chemistry
+				 * timestep, just as it does for excessive H/electron changes. */
+				const double closure = 1.0 - xhe1t[i + 1] - xhe3t[i + 1];
+				if (closure < -1e-12)
+				{
+					if (dti <= emergency_dt_min)
+						fprintf(stderr, "negative HeII closure at emergency timestep: %.12e\n", closure);
+					return 100000000003;
+				}
+				xhe2t[i + 1] = max(x_min_fix, closure);
 			}
 			else if (max(max(xhe2t[i + 1], xhe3t[i + 1]), xhe1t[i + 1]) == xhe3t[i + 1])
 			{
-				xhe3t[i + 1] = 1 - xhe1t[i + 1] - xhe2t[i + 1];
+				const double closure = 1.0 - xhe1t[i + 1] - xhe2t[i + 1];
+				if (closure < -1e-12)
+				{
+					if (dti <= emergency_dt_min)
+						fprintf(stderr, "negative HeIII closure at emergency timestep: %.12e\n", closure);
+					return 100000000003;
+				}
+				xhe3t[i + 1] = max(x_min_fix, closure);
 			}
+			else
+			{
+				const double closure = 1.0 - xhe2t[i + 1] - xhe3t[i + 1];
+				if (closure < -1e-12)
+				{
+					if (dti <= emergency_dt_min)
+						fprintf(stderr, "negative HeI closure at emergency timestep: %.12e\n", closure);
+					return 100000000003;
+				}
+				xhe1t[i + 1] = max(x_min_fix, closure);
+			}
+		}
+		if (!isfinite(xhe1t[i + 1]) || !isfinite(xhe2t[i + 1]) || !isfinite(xhe3t[i + 1]) ||
+			xhe1t[i + 1] < 0.0 || xhe2t[i + 1] < 0.0 || xhe3t[i + 1] < 0.0)
+		{
+			if (dti <= emergency_dt_min)
+				fprintf(stderr, "invalid helium state at emergency timestep\n");
+			return 100000000003;
 		}
 
 		ne_init = xh2t[i] * nhi + (Y / (4.0 * ((1.0 - Y)))) * nhi * (xhe2t[i] + 2 * xhe3t[i]);
 		ne_up = xh2t[i + 1] * nhi + (Y / (4.0 * ((1.0 - Y)))) * nhi * (xhe2t[i + 1] + 2 * xhe3t[i + 1]);
 		nerate = Xrate * nhi + (Y / (4.0 * ((1.0 - Y)))) * nhi * (he2rate + 2 * he3rate);
+		if (!isfinite(ne_up) || !isfinite(nerate))
+		{
+			if (dti <= emergency_dt_min)
+				fprintf(stderr, "invalid electron update at emergency timestep\n");
+			return 100000000003;
+		}
 
-		if (fabs(ne_up - ne_init) / (ne_init + X_FM) > lim && dti > dt_min)
+		const double electron_change = fabs(ne_up - ne_init) / (ne_init + X_FM);
+		step_frac_change = max(step_frac_change, electron_change);
+		if (electron_change > lim && dti > dt_min)
 		{
 			// printf("change %0.12e %0.12e\n", fabs(ne_up - ne_init)/(ne_init+X_FM), lim);
 			return 100000000002;
@@ -457,7 +546,11 @@ long int xTiter(double dti, double NH1, double Nhe1, double Nhe2, double R, doub
 		ti = tcal;
 
 		/* Sub cycling time step for next loop */
-		if (frac_change < 0.5 && dti > dt_min)
+		if (dti < dt_min && step_frac_change < 0.5)
+		{
+			*(dtrec) = min(dt_min, 2 * dti);
+		}
+		else if (frac_change < 0.5 && dti > dt_min)
 		{ // has value 0.05 in paper but 0.5 here
 			*(dtrec) = 2 * dti;
 		}
@@ -472,6 +565,11 @@ long int xTiter(double dti, double NH1, double Nhe1, double Nhe2, double R, doub
 			break;
 		}
 		dti = (double)min(*(dtrec), tsim - tcal);
+	}
+	if (storei < 0)
+	{
+		fprintf(stderr, "Chemistry subcycling did not reach the global timestep in %d steps\n", max_subcycling_steps);
+		exit(EXIT_FAILURE);
 	}
 	double nu = (1.0 + 4.0 * Y) / (1.0 + Y + xh2t[storei] + xhe2t[storei] + 2 * xhe3t[storei]);
 	//      printf("T %lf %d\n",(2.0/3.0)*Tt[storei]*(nu*PROTONMASS)/(kb),storei);

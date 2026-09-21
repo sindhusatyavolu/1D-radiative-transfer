@@ -36,6 +36,7 @@
 #define lim 2e-1
 #define x_min_fix 1e-20
 #define dt_min 1e-4			  // minimum time step in Myr
+#define emergency_dt_min 1e-8 // retry floor for a proposed nonphysical state
 #define Tini 100.0	 // temperature slab in K
 
 #endif

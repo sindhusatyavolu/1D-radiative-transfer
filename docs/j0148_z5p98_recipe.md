@@ -62,16 +62,20 @@ Run:
 
 ```bash
 cd /Users/ssatyavolu/projects/proximity/1D-radiative-transfer
-make faster
+make -B faster
 ```
 
 This builds `rte1d_faster`. It caches the three photoionization cross-section
-functions and reuses the fixed frequency grid and spectral weights. The cache
-keys and cached values retain the exact floating-point inputs and results.
-Representative J0148 sightlines ran about 1.5 times faster than `rte1d_fast`.
-Tests at `tQ=0.01`, `1`, and `100` Myr, using both 500-sightline input blocks
-and multiple ATON snapshots, produced byte-for-byte identical text outputs.
-A known numerically failing sightline also failed identically in both builds.
+functions and reuses the fixed frequency grid and spectral weights. It also
+keeps the helium fractions normalized and retries a chemistry update with a
+smaller local timestep if the proposed temperature or abundance is
+nonphysical. This is required by the strongly rescaled `z=9.55` model. Solver
+errors now return a failure status, and the Python runner stops if a solver
+does not create a complete 891-row output.
+
+Use `-B` here because an older `rte1d_faster` executable may already exist.
+Do not rebuild this executable while another grid command is still launching
+new sightlines from it; wait for that command to finish first.
 
 The input directory must contain the `f1k` and `l1k` files for every snapshot
 listed above.
@@ -144,7 +148,7 @@ cd /Users/ssatyavolu/projects/proximity/1D-radiative-transfer
   --input-dir /Users/ssatyavolu/projects/fireqso_dominika \
   --output-root outputs/j0148_z5p98_m2739/section31_grid \
   --z-qso 5.98 --m1450 -27.39 \
-  --snapshots 6.15 \
+  --snapshots 5.76 \
   --workers 3 --resume
 ```
 
@@ -171,6 +175,45 @@ Each snapshot command runs its five lifetimes sequentially in this order:
 
 `--resume` validates existing text outputs and skips complete sightlines. If a
 session is interrupted, rerun the same command.
+
+### Existing `z=9.55` results made with the older executable
+
+The older solver completed all 1,000 sightlines only for `tQ=0.01` Myr. At
+`tQ=0.1`, `1`, `10`, and `100` Myr it exited during the helium update and made
+no sightline files, although its zero exit status made the batch look
+successful. Do not assemble that directory.
+
+After all currently running jobs have stopped, rebuild the solver, archive the
+old `z=9.55` directory, and rerun all five lifetimes:
+
+```bash
+cd /Users/ssatyavolu/projects/proximity/1D-radiative-transfer
+make -B faster
+
+mv outputs/j0148_z5p98_m2739/section31_grid/qso/xhi_z9.55 \
+   outputs/j0148_z5p98_m2739/section31_grid/qso/xhi_z9.55_before_chemistry_fix
+
+/Users/ssatyavolu/miniconda3/bin/python tools/run_aton_section31_grid.py run \
+  --rte ./rte1d_faster \
+  --input-dir /Users/ssatyavolu/projects/fireqso_dominika \
+  --output-root outputs/j0148_z5p98_m2739/section31_grid \
+  --z-qso 5.98 --m1450 -27.39 \
+  --snapshots 9.55 \
+  --workers 6 --resume
+```
+
+For a single `z=9.55` job on the 16-core/32-thread ThinkStation, use
+`--workers 16` if at least 20 GiB of memory is free.
+
+That command is sufficient to replace the missing `z=9.55` portion of the
+grid. It leaves the seven completed snapshot directories as legacy-chemistry
+results. The correction changes Ly-alpha optical depth very little in most
+pixels, but representative single-sightline tests found local differences up
+to about 1% at `z=5.95` and 3% at `z=7.14`. For one numerically uniform,
+scientifically corrected grid, archive the complete `qso/` directory and
+rerun all eight snapshots with the rebuilt executable. The Section 3.1
+density, length, quasar-redshift, and magnitude settings are unchanged; this
+choice concerns only the chemistry integrator.
 
 To inspect the Screen sessions, use:
 
@@ -204,7 +247,6 @@ Each array has shape `(N, 891, 7)` with columns
 distance_ckpc, xHI, temperature_K, xHeI, xHeII, xHeIII, tau_Lya
 ```
 
-Here `N <= 1000`. As in the archived FIRE analysis, the solver can reject a
-small number of numerically failed sightlines. The assembler excludes those
-rows and writes their global LOS ids to a matching `deleted_indices_*.txt`
-file beside the array. It still stops if it finds no valid sightlines.
+For this grid, `N` should be 1,000. The assembler records any absent global LOS
+ids in a matching `deleted_indices_*.txt` file, but a nonempty list now means
+the run is incomplete and should be resumed before using the array.
