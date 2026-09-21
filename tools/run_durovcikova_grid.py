@@ -13,7 +13,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import math
 import struct
 import subprocess
+import threading
+import time
 from pathlib import Path
+
+
+_active_processes: set[subprocess.Popen] = set()
+_active_processes_lock = threading.Lock()
 
 
 def parse_los(values: list[str]) -> list[int]:
@@ -40,13 +46,49 @@ def load_los_file(path: Path) -> list[int]:
 
 def run_command(command: list[str], dry_run: bool, log: Path | None = None) -> None:
     print(" ".join(command))
-    if not dry_run:
-        if log is None:
-            subprocess.run(command, check=True)
-        else:
+    if dry_run:
+        return
+
+    stream = None
+    process = None
+    try:
+        if log is not None:
             log.parent.mkdir(parents=True, exist_ok=True)
-            with log.open("w") as stream:
-                subprocess.run(command, check=True, stdout=stream, stderr=subprocess.STDOUT)
+            stream = log.open("w")
+        process = subprocess.Popen(
+            command,
+            stdout=stream,
+            stderr=subprocess.STDOUT if stream is not None else None,
+        )
+        with _active_processes_lock:
+            _active_processes.add(process)
+        returncode = process.wait()
+        if returncode != 0:
+            raise subprocess.CalledProcessError(returncode, command)
+    finally:
+        if process is not None:
+            with _active_processes_lock:
+                _active_processes.discard(process)
+        if stream is not None:
+            stream.close()
+
+
+def terminate_active_processes() -> None:
+    """Stop solver children when the driver is interrupted or one job fails."""
+    with _active_processes_lock:
+        processes = list(_active_processes)
+    for process in processes:
+        if process.poll() is None:
+            process.terminate()
+    deadline = time.monotonic() + 5
+    for process in processes:
+        if process.poll() is not None:
+            continue
+        try:
+            process.wait(timeout=max(0, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
 
 def output_name(output_los: int, z_qso: float, tq: float, magnitude: float,
@@ -202,9 +244,10 @@ def main() -> None:
     if not jobs:
         print("all requested outputs are already complete")
         return
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(run_command, command, False, log): (command, log)
-                   for command, log in jobs}
+    pool = ThreadPoolExecutor(max_workers=args.workers)
+    futures = {pool.submit(run_command, command, False, log): (command, log)
+               for command, log in jobs}
+    try:
         completed = 0
         for future in as_completed(futures):
             command, log = futures[future]
@@ -214,6 +257,14 @@ def main() -> None:
                 raise RuntimeError(f"Run failed; see {log}: {' '.join(command)}") from error
             completed += 1
             print(f"completed {completed}/{len(jobs)}", flush=True)
+    except BaseException:
+        for future in futures:
+            future.cancel()
+        terminate_active_processes()
+        pool.shutdown(wait=True, cancel_futures=True)
+        raise
+    else:
+        pool.shutdown(wait=True)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import signal
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -41,6 +42,31 @@ FIELDS = (
     "Gammabghe2",
     "Heatbg",
 )
+
+
+def run_child(command: list[str]) -> None:
+    """Run a child driver and allow it to clean up its solvers on Ctrl-C."""
+    process = subprocess.Popen(command)
+    try:
+        returncode = process.wait()
+    except KeyboardInterrupt:
+        if process.poll() is None:
+            try:
+                process.send_signal(signal.SIGINT)
+            except ProcessLookupError:
+                pass
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        raise
+    if returncode != 0:
+        raise subprocess.CalledProcessError(returncode, command)
 
 
 def add_grid_selection(parser: argparse.ArgumentParser) -> None:
@@ -111,45 +137,52 @@ def run_grid(args: argparse.Namespace, snapshots: list[Snapshot]) -> None:
     for snapshot in snapshots:
         expansion = (1.0 + args.z_qso) / (1.0 + snapshot.redshift)
         output_dir = args.output_root / family / f"xhi_z{snapshot.label}"
-        command = [
-            sys.executable,
-            str(script),
-            "--rte", str(args.rte),
-            "--input-dir", str(args.input_dir),
-            "--input-prefix", f"f1kz{snapshot.label}M3LOS",
-            "--second-input-prefix", f"l1kz{snapshot.label}M3LOS",
-            "--output-dir", str(output_dir),
-            # Runtime cosmology always stays at the observed quasar redshift.
-            "--z-sim", f"{args.z_qso:.12g}",
-            "--z-qso", f"{args.z_qso:.12g}",
-            "--m1450", f"{args.m1450:.12g}",
-            "--tq-grid", *[f"{tq:g}" for tq in args.tq_grid],
-            "--n-cells", str(args.n_cells),
-            "--n-los", str(args.n_los),
-            "--split-los-at", str(args.split_los_at),
-            "--legacy-density", str(args.legacy_density),
-            "--density-multiplier", f"{expansion ** 3:.17g}",
-            "--comoving-length-scale", f"{expansion ** 2:.17g}",
-            "--num-pixels-redward", str(args.num_pixels_redward),
-            "--legacy-alphahe2-bug", str(args.legacy_alphahe2_bug),
-            "--boxsize-override", f"{args.boxsize_override:.12g}",
-            "--los", *args.los,
-            "--workers", str(args.workers),
-        ]
-        if args.resume:
-            command.append("--resume")
-        if args.dry_run:
-            command.append("--dry-run")
-        if args.initial_only:
-            command.append("--initial-only")
-
         print(
             f"snapshot z{snapshot.label}: z_snapshot={snapshot.redshift:.6f}, "
             f"paper_xHI={snapshot.paper_xhi:g}, density={expansion ** 3:.15g}, "
             f"comoving_length={expansion ** 2:.15g}",
             flush=True,
         )
-        subprocess.run(command, check=True)
+        # Complete one lifetime before starting the next. This lets users run
+        # one snapshot per batch/screen while --workers parallelizes only the
+        # sightlines belonging to the current lifetime.
+        tqs = [args.tq_grid[0]] if args.initial_only else args.tq_grid
+        for tq in tqs:
+            if not args.initial_only:
+                print(f"snapshot z{snapshot.label}: starting tQ={tq:g} Myr", flush=True)
+            command = [
+                sys.executable,
+                str(script),
+                "--rte", str(args.rte),
+                "--input-dir", str(args.input_dir),
+                "--input-prefix", f"f1kz{snapshot.label}M3LOS",
+                "--second-input-prefix", f"l1kz{snapshot.label}M3LOS",
+                "--output-dir", str(output_dir),
+                # Runtime cosmology always stays at the observed quasar redshift.
+                "--z-sim", f"{args.z_qso:.12g}",
+                "--z-qso", f"{args.z_qso:.12g}",
+                "--m1450", f"{args.m1450:.12g}",
+                "--tq-grid", f"{tq:g}",
+                "--n-cells", str(args.n_cells),
+                "--n-los", str(args.n_los),
+                "--split-los-at", str(args.split_los_at),
+                "--legacy-density", str(args.legacy_density),
+                "--density-multiplier", f"{expansion ** 3:.17g}",
+                "--comoving-length-scale", f"{expansion ** 2:.17g}",
+                "--num-pixels-redward", str(args.num_pixels_redward),
+                "--legacy-alphahe2-bug", str(args.legacy_alphahe2_bug),
+                "--boxsize-override", f"{args.boxsize_override:.12g}",
+                "--los", *args.los,
+                "--workers", str(args.workers),
+            ]
+            if args.resume:
+                command.append("--resume")
+            if args.dry_run:
+                command.append("--dry-run")
+            if args.initial_only:
+                command.append("--initial-only")
+
+            run_child(command)
 
 
 def assemble_grid(args: argparse.Namespace, snapshots: list[Snapshot]) -> None:
@@ -162,10 +195,17 @@ def assemble_grid(args: argparse.Namespace, snapshots: list[Snapshot]) -> None:
         for tq in tqs:
             if args.initial_only:
                 filename = f"noqso_z{snapshot.label}_zqso{args.z_qso:.2f}_los.npy"
+                deleted_filename = (
+                    f"deleted_indices_noqso_z{snapshot.label}_zqso{args.z_qso:.2f}.txt"
+                )
             else:
                 filename = (
                     f"qso_z{snapshot.label}_zqso{args.z_qso:.2f}_m{args.m1450:.2f}_"
                     f"tq{tq:.0e}_los.npy"
+                )
+                deleted_filename = (
+                    f"deleted_indices_qso_z{snapshot.label}_zqso{args.z_qso:.2f}_"
+                    f"m{args.m1450:.2f}_tq{tq:.0e}.txt"
                 )
             command = [
                 sys.executable,
@@ -177,10 +217,13 @@ def assemble_grid(args: argparse.Namespace, snapshots: list[Snapshot]) -> None:
                 "--m1450", f"{args.m1450:.12g}",
                 "--tq", f"{tq:g}",
                 "--n-cells", str(args.n_cells),
+                "--allow-missing",
+                "--deleted-indices-output",
+                str(args.output_root / "npy" / deleted_filename),
             ]
             if args.initial_only:
                 command.append("--initial-only")
-            subprocess.run(command, check=True)
+            run_child(command)
 
 
 def main() -> None:

@@ -44,12 +44,24 @@ def main() -> None:
     parser.add_argument("--output-los-mode", choices=("input", "row"), default="input")
     parser.add_argument("--initial-only", action="store_true",
                         help="Read noqso_z{z}LOS{id}.txt pre-quasar outputs")
+    parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Skip missing/invalid sightlines and record their LOS ids instead of aborting",
+    )
+    parser.add_argument(
+        "--deleted-indices-output",
+        type=Path,
+        help="Write skipped input LOS ids here; intended for legacy-style grids",
+    )
     args = parser.parse_args()
 
     t_on = args.tq if args.t_on is None else args.t_on
     input_indices = load_indices(args.indices_file) if args.indices_file else parse_los(args.los)
     rows = []
     missing = []
+    invalid = []
+    deleted = []
     for row, los in enumerate(input_indices):
         output_los = los if args.output_los_mode == "input" else row
         name = (f"noqso_z{args.z_qso:.2f}LOS{output_los}.txt" if args.initial_only else
@@ -57,14 +69,35 @@ def main() -> None:
         path = args.input_dir / name
         if not path.exists() or path.stat().st_size == 0:
             missing.append(path)
+            deleted.append(los)
             continue
-        rows.append(np.loadtxt(path)[: args.n_cells, :])
+        try:
+            values = np.loadtxt(path)
+        except (OSError, ValueError):
+            invalid.append(path)
+            deleted.append(los)
+            continue
+        if values.shape != (args.n_cells, 7) or not np.all(np.isfinite(values)):
+            invalid.append(path)
+            deleted.append(los)
+            continue
+        rows.append(values)
 
-    if missing:
-        print(f"missing={len(missing)}")
-        for path in missing[:20]:
+    if missing or invalid:
+        print(f"missing={len(missing)} invalid={len(invalid)}")
+        for path in (missing + invalid)[:20]:
             print(path)
-        raise SystemExit(1)
+        if not args.allow_missing:
+            raise SystemExit(1)
+    if not rows:
+        raise SystemExit("no valid sightline outputs found")
+    if args.deleted_indices_output is not None:
+        args.deleted_indices_output.parent.mkdir(parents=True, exist_ok=True)
+        if deleted:
+            np.savetxt(args.deleted_indices_output, np.asarray(deleted, dtype=int), fmt="%d")
+        else:
+            args.deleted_indices_output.write_text("")
+        print(f"wrote {args.deleted_indices_output} deleted={len(deleted)}")
 
     stack = np.asarray(rows, dtype=np.float64)
     args.output.parent.mkdir(parents=True, exist_ok=True)

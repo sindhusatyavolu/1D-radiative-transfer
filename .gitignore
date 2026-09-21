@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 rte1d_opt
+rte1d_fast
+rte1d_faster
 outputs/
 example_input_files/regenerated_direct/
 example_input_files/z6p15_f1/

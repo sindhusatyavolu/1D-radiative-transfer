@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#ifdef RTE_CACHE_CROSS_SECTIONS
+#include <stdint.h>
+#include <string.h>
+#endif
 
 /* electron collisonal ionisation rates in Myr^-1 cm^3 */
 double GE(double Ti)
@@ -106,7 +110,32 @@ double alphahe3(double Ti)
 
 /* Photoionisation cross sections in nm^2 */
 
-double sigma(double f)
+#ifdef RTE_CACHE_CROSS_SECTIONS
+typedef struct
+{
+	uint64_t key;
+	double value;
+	int valid;
+} CrossSectionCacheEntry;
+
+static _Thread_local CrossSectionCacheEntry cross_section_cache[3][4096];
+
+static double cached_cross_section(double energy, int species,
+								   double (*evaluate)(double))
+{
+	uint64_t key;
+	memcpy(&key, &energy, sizeof(key));
+	unsigned index = (unsigned)((key >> 32) ^ key) & 4095;
+	CrossSectionCacheEntry *entry = &cross_section_cache[species][index];
+	if (entry->valid && entry->key == key)
+		return entry->value;
+	double value = evaluate(energy);
+	*entry = (CrossSectionCacheEntry){key, value, 1};
+	return value;
+}
+#endif
+
+static double sigma_value(double f)
 {
 	double sigma_0 = 5.475; // in nm^2
 	double nu_0 = 0.4298;
@@ -124,7 +153,16 @@ double sigma(double f)
 	// return 6.3e-18*1e14*(1.34*pow(f/13.6,-2.99)-0.34*pow(f/13.6,-3.99)); //bolton cross sections
 }
 
-double sigmahe1(double f)
+double sigma(double f)
+{
+#ifdef RTE_CACHE_CROSS_SECTIONS
+	return cached_cross_section(f, 0, sigma_value);
+#else
+	return sigma_value(f);
+#endif
+}
+
+static double sigmahe1_value(double f)
 {
 	double sigma_0 = 9.492e-2; // in nm^2
 	double nu_0 = 13.61;
@@ -142,7 +180,16 @@ double sigmahe1(double f)
 	// return 7.03e-18*1e14*(1.66*pow(f/24.6,-2.05)-0.66*pow(f/24.6,-3.05)); //bolton cross sections
 }
 
-double sigmahe2(double f)
+double sigmahe1(double f)
+{
+#ifdef RTE_CACHE_CROSS_SECTIONS
+	return cached_cross_section(f, 1, sigmahe1_value);
+#else
+	return sigmahe1_value(f);
+#endif
+}
+
+static double sigmahe2_value(double f)
 {
 	double sigma_0 = 1.369; // in nm^2
 	double nu_0 = 1.720;
@@ -158,6 +205,15 @@ double sigmahe2(double f)
 	else
 		return sigma_0 * (pow((x - 1), 2) + pow(yw, 2)) * pow(y, 0.5 * P - 5.5) / pow(1 + sqrt(y / ya), P);
 	//  return 1.5e-18*1e14*(1.34*pow(f/54.5,-2.99)-0.34*pow(f/54.5,-3.99)); //bolton
+}
+
+double sigmahe2(double f)
+{
+#ifdef RTE_CACHE_CROSS_SECTIONS
+	return cached_cross_section(f, 2, sigmahe2_value);
+#else
+	return sigmahe2_value(f);
+#endif
 }
 
 /* Probabilities */
