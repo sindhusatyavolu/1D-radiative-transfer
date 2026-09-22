@@ -1,6 +1,6 @@
 # 1D Radiative Transfer
 
-Minimal modular C version of the 1D quasar proximity-zone radiative-transfer code.
+Used Codex to make the main C version of the 1D quasar proximity-zone radiative-transfer code modular and optimized. 
 
 ## Build
 
@@ -122,3 +122,5 @@ python tools/run_durovcikova_grid.py \
 ```
 
 Use `--dry-run` to print the commands without running them.
+
+
