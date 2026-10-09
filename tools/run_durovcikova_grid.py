@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
+import json
 import math
 import struct
 import subprocess
@@ -20,6 +22,12 @@ from pathlib import Path
 
 _active_processes: set[subprocess.Popen] = set()
 _active_processes_lock = threading.Lock()
+
+INPUT_FIELDS = (
+    "nh", "nh1", "T", "vpec", "rho", "Gammabg", "Gammabghe1",
+    "Gammabghe2", "Heatbg",
+)
+CONFIGURATION_FILENAME = ".run_configuration.json"
 
 
 def parse_los(values: list[str]) -> list[int]:
@@ -42,6 +50,91 @@ def load_los_file(path: Path) -> list[int]:
         if line and not line.startswith("#"):
             los.append(int(line))
     return los
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def input_signatures(input_dir: Path, prefixes: list[str]) -> list[dict[str, object]]:
+    signatures = []
+    for prefix in prefixes:
+        for field in INPUT_FIELDS:
+            path = (input_dir / f"{prefix}_{field}.txt").resolve()
+            stat = path.stat()
+            signatures.append({
+                "path": str(path),
+                "size": stat.st_size,
+                "mtime_ns": stat.st_mtime_ns,
+            })
+    return signatures
+
+
+def output_configuration(args: argparse.Namespace, rte: Path) -> dict[str, object]:
+    prefixes = [args.input_prefix]
+    if args.second_input_prefix is not None:
+        prefixes.append(args.second_input_prefix)
+    return {
+        "schema_version": 2,
+        "rte_path": str(rte),
+        "rte_sha256": sha256_file(rte),
+        "input_signatures": input_signatures(args.input_dir, prefixes),
+        "input_prefix": args.input_prefix,
+        "second_input_prefix": args.second_input_prefix,
+        "runtime_redshift": args.z_sim,
+        "quasar_redshift": args.z_qso,
+        "m1450": args.m1450,
+        "legacy_float_magnitude": args.legacy_float_magnitude,
+        "fduty": args.fduty,
+        "t_on_mode": "match_lifetime" if args.t_on is None else "fixed",
+        "fixed_t_on_Myr": args.t_on,
+        "n_cells": args.n_cells,
+        "n_los_per_input_file": args.n_los,
+        "split_los_at": args.split_los_at,
+        "legacy_density": args.legacy_density,
+        "density_multiplier": args.density_multiplier,
+        "rescale_background": args.rescale_background,
+        "apply_spectral_hydrogen_fraction": args.apply_spectral_hydrogen_fraction,
+        "correct_spectral_units": args.correct_spectral_units,
+        "cellsize_override_comoving_kpc": args.cellsize_override,
+        "correct_cosmology_time_units": args.correct_cosmology_time_units,
+        "num_pixels_redward": args.num_pixels_redward,
+        "legacy_alphahe2_bug": args.legacy_alphahe2_bug,
+        "boxsize_override": args.boxsize_override,
+        "comoving_length_scale": args.comoving_length_scale,
+        "initial_only": args.initial_only,
+        "output_los_mode": args.output_los_mode,
+    }
+
+
+def ensure_output_configuration(output_dir: Path, configuration: dict[str, object]) -> None:
+    path = output_dir / CONFIGURATION_FILENAME
+    if path.exists():
+        existing = json.loads(path.read_text())
+        if existing != configuration:
+            keys = sorted(set(existing) | set(configuration))
+            differences = [
+                f"  {key}: existing={existing.get(key)!r} requested={configuration.get(key)!r}"
+                for key in keys if existing.get(key) != configuration.get(key)
+            ]
+            raise SystemExit(
+                f"refusing to mix incompatible runs in {output_dir}:\n" + "\n".join(differences)
+            )
+        return
+
+    existing_outputs = list(output_dir.glob("*.txt"))
+    if existing_outputs:
+        raise SystemExit(
+            f"refusing to resume untracked outputs in {output_dir}; choose a new output directory "
+            "so the scientific configuration can be verified"
+        )
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(configuration, indent=2, sort_keys=True) + "\n")
+    temporary.replace(path)
 
 
 def run_command(
@@ -170,6 +263,29 @@ def parse_args() -> argparse.Namespace:
         help="Additional multiplier applied to physical nH and nHI after legacy density handling",
     )
     parser.add_argument(
+        "--rescale-background", type=int, choices=(0, 1), default=0,
+        help=("1 scales photoionization rates with the total applied density factor and "
+              "background heating with its square, preserving the input equilibrium"),
+    )
+    parser.add_argument(
+        "--apply-spectral-hydrogen-fraction", type=int, choices=(0, 1), default=0,
+        help=("1 multiplies total-gas rho by X=0.76 when synthesizing HI Ly-alpha; "
+              "0 retains the legacy normalization"),
+    )
+    parser.add_argument(
+        "--correct-spectral-units", type=int, choices=(0, 1), default=0,
+        help=("1 treats cellsize as ckpc and rho as Gadget 1e10 Msun h^2/kpc^3 "
+              "when computing Ly-alpha; 0 retains the legacy h-factor mismatch"),
+    )
+    parser.add_argument(
+        "--cellsize-override", type=float, default=0.0,
+        help="Comoving cell size in kpc; 0 retains the compiled legacy value",
+    )
+    parser.add_argument(
+        "--correct-cosmology-time-units", type=int, choices=(0, 1), default=0,
+        help="1 derives H0 in Myr^-1 from the code's s-to-Myr conversion",
+    )
+    parser.add_argument(
         "--output-los-mode",
         choices=("input", "row"),
         default="input",
@@ -195,6 +311,8 @@ def main() -> None:
         raise SystemExit("--workers must be positive")
     if args.density_multiplier <= 0:
         raise SystemExit("--density-multiplier must be positive")
+    if args.cellsize_override < 0:
+        raise SystemExit("--cellsize-override must be non-negative")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if args.los_file is not None:
         los_values = load_los_file(args.los_file)
@@ -203,6 +321,10 @@ def main() -> None:
     else:
         raise SystemExit("provide --los or --los-file")
     rte = args.rte.resolve() if not args.rte.is_absolute() else args.rte
+    if not rte.is_file():
+        raise SystemExit(f"RTE executable does not exist: {rte}")
+    if not args.dry_run:
+        ensure_output_configuration(args.output_dir, output_configuration(args, rte))
     magnitude = args.m1450
     if args.legacy_float_magnitude:
         magnitude = struct.unpack("f", struct.pack("f", magnitude))[0]
@@ -239,6 +361,11 @@ def main() -> None:
                 f"{args.comoving_length_scale:.17g}",
                 str(int(args.initial_only)),
                 f"{args.density_multiplier:.17g}",
+                str(args.rescale_background),
+                str(args.apply_spectral_hydrogen_fraction),
+                str(args.correct_spectral_units),
+                f"{args.cellsize_override:.17g}",
+                str(args.correct_cosmology_time_units),
             ]
             log_dir = args.log_dir
             if log_dir is None and args.workers > 1:
@@ -271,7 +398,9 @@ def main() -> None:
             try:
                 future.result()
             except Exception as error:
-                raise RuntimeError(f"Run failed; see {log}: {' '.join(command)}") from error
+                raise SystemExit(
+                    f"run failed; see {log}: {' '.join(command)}\n{error}"
+                ) from None
             completed += 1
             print(f"completed {completed}/{len(jobs)}", flush=True)
     except BaseException:

@@ -70,9 +70,7 @@ double mag_to_ndot(double mag)
 /* Hubble parameter at cosmic time t */
 double Hubble(double t)
 {
-	double omega_m = 0.308;
 	double omega_l = 1 - omega_m;
-	double H0 = 67.8 * 1.05e-6;
 	double a = pow(sqrt(omega_m / omega_l) * sinh(1.5 * H0 * sqrt(omega_l) * t), 2.0 / 3.0); // pow(1+z,-3);
 	double zz = 1.0 / a - 1.0;
 	//      return H0*sqrt(omega_m/pow(a,3) +1-omega_m);
@@ -82,9 +80,6 @@ double Hubble(double t)
 /* scale factor */
 double ascale(double t)
 {
-	double omega_m = 0.308;
-	double omega_l = 1 - omega_m;
-	double H0 = 67.8 * 1.05e-6;
 	return 1.0 / (1.0 + z); // when input units are in comoving else change a = 1.0 , a = 1/1+z   //pow(sqrt(omega_m/omega_l)*sinh(1.5*H0*sqrt(omega_l)*t), 2.0/3.0);
 }
 

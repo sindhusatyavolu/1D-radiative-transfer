@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 {
    
     if (argc < 5) {
-        fprintf(stderr, "Usage: %s tq_Myr t_on_Myr fduty LOS_index [M1450 runtime_z z_qso input_dir input_prefix output_dir n_cells n_los output_los legacy_density num_pixels_redward legacy_alphahe2_bug boxsize_override comoving_length_scale initial_only density_multiplier]\n", argv[0]);
+        fprintf(stderr, "Usage: %s tq_Myr t_on_Myr fduty LOS_index [M1450 runtime_z z_qso input_dir input_prefix output_dir n_cells n_los output_los legacy_density num_pixels_redward legacy_alphahe2_bug boxsize_override comoving_length_scale initial_only density_multiplier rescale_background apply_spectral_hydrogen_fraction correct_spectral_units cellsize_override correct_cosmology_time_units]\n", argv[0]);
         return 1;
     }
 
@@ -132,6 +132,21 @@ int main(int argc, char **argv)
 	double density_multiplier = 1.0;
 	if (argc > 20)
 		density_multiplier = atof(argv[20]);
+	int rescale_background = 0;
+	if (argc > 21)
+		rescale_background = atoi(argv[21]);
+	int apply_spectral_hydrogen_fraction = 0;
+	if (argc > 22)
+		apply_spectral_hydrogen_fraction = atoi(argv[22]);
+	int correct_spectral_units = 0;
+	if (argc > 23)
+		correct_spectral_units = atoi(argv[23]);
+	double cellsize_override = 0.0;
+	if (argc > 24)
+		cellsize_override = atof(argv[24]);
+	int correct_cosmology_time_units = 0;
+	if (argc > 25)
+		correct_cosmology_time_units = atoi(argv[25]);
 	if (initial_only != 0 && initial_only != 1)
 	{
 		fprintf(stderr, "initial_only must be 0 or 1, got %d\n", initial_only);
@@ -145,6 +160,36 @@ int main(int argc, char **argv)
 	if (!isfinite(density_multiplier) || density_multiplier <= 0.0)
 	{
 		fprintf(stderr, "density_multiplier must be finite and positive, got %g\n", density_multiplier);
+		return 1;
+	}
+	if (legacy_density != 0 && legacy_density != 1)
+	{
+		fprintf(stderr, "legacy_density must be 0 or 1, got %d\n", legacy_density);
+		return 1;
+	}
+	if (rescale_background != 0 && rescale_background != 1)
+	{
+		fprintf(stderr, "rescale_background must be 0 or 1, got %d\n", rescale_background);
+		return 1;
+	}
+	if (apply_spectral_hydrogen_fraction != 0 && apply_spectral_hydrogen_fraction != 1)
+	{
+		fprintf(stderr, "apply_spectral_hydrogen_fraction must be 0 or 1, got %d\n", apply_spectral_hydrogen_fraction);
+		return 1;
+	}
+	if (correct_spectral_units != 0 && correct_spectral_units != 1)
+	{
+		fprintf(stderr, "correct_spectral_units must be 0 or 1, got %d\n", correct_spectral_units);
+		return 1;
+	}
+	if (!isfinite(cellsize_override) || cellsize_override < 0.0)
+	{
+		fprintf(stderr, "cellsize_override must be finite and non-negative, got %g\n", cellsize_override);
+		return 1;
+	}
+	if (correct_cosmology_time_units != 0 && correct_cosmology_time_units != 1)
+	{
+		fprintf(stderr, "correct_cosmology_time_units must be 0 or 1, got %d\n", correct_cosmology_time_units);
 		return 1;
 	}
 	if (!isfinite(tq) || tq < 0.0 || (!initial_only && tq == 0.0))
@@ -198,9 +243,11 @@ int main(int argc, char **argv)
     printf("Quasar/input properties\n");
 
 	Ng = initial_only ? 0.0 : 3.15e13 * mag_to_ndot(M1450); // number of ionizing photons in Myr^-1
+	if (correct_cosmology_time_units)
+		H0 = HUBBLE * 0.678 * timefac; /* H0=67.8 km/s/Mpc in Myr^-1. */
 	printf("Mag %lf Ng %e\n", M1450, Ng); 
-	printf("z_sim %lf z_qso %lf input %s/%s_*.txt\n", z, z_qso, input_dir, input_prefix);
-	printf("n_cells %d n_los %d input_los %d output_los %d legacy_density %d density_multiplier %.17g num_pixels_redward %d\n", Ncells, NLOS, los, output_los, legacy_density, density_multiplier, num_pixels_redward);
+	printf("runtime_z %lf z_qso %lf input %s/%s_*.txt\n", z, z_qso, input_dir, input_prefix);
+	printf("n_cells %d n_los %d input_los %d output_los %d legacy_density %d density_multiplier %.17g rescale_background %d apply_spectral_hydrogen_fraction %d correct_spectral_units %d correct_cosmology_time_units %d num_pixels_redward %d\n", Ncells, NLOS, los, output_los, legacy_density, density_multiplier, rescale_background, apply_spectral_hydrogen_fraction, correct_spectral_units, correct_cosmology_time_units, num_pixels_redward);
 	if (initial_only)
 		printf("initial_only: synthesize the pre-quasar spectrum without evolving the gas\n");
 
@@ -209,8 +256,13 @@ int main(int argc, char **argv)
 	double tz = (1.0 / H0) * (2.0 / 3.0) * pow(1.0 - omega_m, -0.5) * asinh(pow((1.0 - omega_m) / omega_m, 0.5) * pow(ai(z), 1.5)); 
 
 
-    /* Set up the spatial grid */
+	/* Set up the spatial grid */
 	int ncells = Ncells;
+	if (cellsize_override > 0.0)
+	{
+		cellsize = cellsize_override;
+		Roffset = cellsize_override;
+	}
 	boxsize = Ncells * cellsize;
 	if (boxsize_override > 0.0)
 		boxsize = boxsize_override;
@@ -368,17 +420,31 @@ int main(int argc, char **argv)
     //}
 
 
+	/* The legacy text files contain an extra hydrogen mass-fraction factor in
+	 * nH and nHI. When requested, remove it and map the physical density from
+	 * the runtime redshift to z_qso. High-level drivers that run directly at
+	 * z_qso provide the snapshot-to-quasar factor through density_multiplier. */
+	double input_density_correction = legacy_density ? 1.0 : 1.0 / X;
+	double runtime_redshift_correction = legacy_density ? 1.0 : pow(1 + z_qso, 3) / pow(1 + z, 3);
+	double applied_density_scale = input_density_correction * runtime_redshift_correction * density_multiplier;
+	double background_gamma_scale = rescale_background ? applied_density_scale : 1.0;
+	double background_heat_scale = rescale_background ? applied_density_scale * applied_density_scale : 1.0;
+	/* rho is total gas mass density. Ly-alpha needs hydrogen number density. */
+	double spectral_hydrogen_scale = apply_spectral_hydrogen_fraction ? X : 1.0;
+	const double hubble_h = 0.678;
+	/* rho is in Gadget density units, 1e10 Msun h^2/kpc^3. The legacy
+	 * conversion divided its particle count by h even though cellsize is
+	 * already stored in ckpc rather than ckpc/h. */
+	double spectral_mass_unit_scale = correct_spectral_units ? 1.0 : 1.0 / hubble_h;
+	printf("applied_density_scale %.17g background_gamma_scale %.17g background_heat_scale %.17g spectral_hydrogen_scale %.17g spectral_mass_unit_scale %.17g\n",
+		applied_density_scale, background_gamma_scale, background_heat_scale,
+		spectral_hydrogen_scale, spectral_mass_unit_scale);
+
 	/* Initial values */
 	for (int i = 0; i < ncells; ++i)
 	{
-		double density_scale = legacy_density ? 1.0 : 1.0 / X;
-		double redshift_scale = legacy_density ? 1.0 : pow(1 + z_qso, 3) / pow(1 + z, 3);
-		nh[i] = nharr[i][los] * density_scale * density_multiplier;							  // to set it to cosmological mean instead, use getnh(z) and convert to physcial coordinates;
-		nh2[i][0] = (nharr[i][los] - nh1arr[i][los]) * density_scale * density_multiplier; // ionized hydrogen density in cm^-3
-
-		// rescaling all densities to  zqso; ignore if the quasar is at the same redshift as the simulation (zqso=z)
-		nh[i] = nh[i] * redshift_scale;
-		nh2[i][0] = nh2[i][0] * redshift_scale;
+		nh[i] = nharr[i][los] * applied_density_scale;							  // to set it to cosmological mean instead, use getnh(z) and convert to physcial coordinates;
+		nh2[i][0] = (nharr[i][los] - nh1arr[i][los]) * applied_density_scale; // ionized hydrogen density in cm^-3
 
 		nhe2[i][0] = x_min_fix * (Y / (4.0 * ((1.0 - Y)))) * nh[i];							// x_min_fix*(Y/(4.0*((1.0-Y))))*nh[i]; // initial He II number density
 		nhe3[i][0] = x_min_fix * (Y / (4.0 * ((1.0 - Y)))) * nh[i];							// x_min_fix*(Y/(4.0*((1.0-Y))))*nh[i]; // initial He III number density
@@ -389,10 +455,10 @@ int main(int argc, char **argv)
 		NHe1[i][0] = hecumsum(nhe1, i, 0) * cellsize * hubble_inv * kpc * nm2 * ascale(ti); // neutral helium column density in nm^-2
 		NHe2[i][0] = hecumsum(nhe2, i, 0) * cellsize * hubble_inv * kpc * nm2 * ascale(ti); // singly ionized helium column density in nm^-2
 		dt[i][0] = Dt;																		// initial time step
-		Gammabkg[i] = gammabg[i][los];														// background photoionization rate of hydrogen, for reference check Haardt & Madau 2012. Assign to zero if you want to ignore background
-		Gammabkg_he1[i] = gammabghe1[i][los];												// background photoionization rate of helium 1
-		Gammabkg_he2[i] = gammabghe2[i][los];												// background photoionization rate of helium 2
-		Heat_bkg[i] = heatbg[i][los];														// background heating rate
+		Gammabkg[i] = gammabg[i][los] * background_gamma_scale;														// background photoionization rate of hydrogen, for reference check Haardt & Madau 2012. Assign to zero if you want to ignore background
+		Gammabkg_he1[i] = gammabghe1[i][los] * background_gamma_scale;												// background photoionization rate of helium 1
+		Gammabkg_he2[i] = gammabghe2[i][los] * background_gamma_scale;												// background photoionization rate of helium 2
+		Heat_bkg[i] = heatbg[i][los] * background_heat_scale;														// background heating rate
 	}
 
 	/*Evolving over global timestep*/
@@ -409,10 +475,7 @@ int main(int argc, char **argv)
 	double *Tau = (double *)malloc(encells * sizeof(double));
 	double *NH1f = (double *)malloc(ncells * sizeof(double));
 	double *Tf = (double *)malloc(ncells * sizeof(double));
-	double dense;
 	double UnitMass_in_g = 1.989e43;
-	double Hubble_h = 0.678;
-	dense = pow(3e21, 3) / (kpc * nm2 * 1.989e43 * pow(Hubble_h, 2)); //*Hubble_h*Hubble_h;
 
 	printf("ton and toff %e %e\n", t_on, t_off);
 	printf("LOS : %d\n", los);
@@ -427,7 +490,7 @@ int main(int argc, char **argv)
 		for (int i = 0; i < ncells; ++i)
 		{
 			Tf[i] = T[i][0];
-			NH1f[i] = rho[i][los] * (1.0 - nh2[i][0] / nh[i]) * (UnitMass_in_g / PROTONMASS / Hubble_h);
+			NH1f[i] = rho[i][los] * spectral_hydrogen_scale * (1.0 - nh2[i][0] / nh[i]) * (UnitMass_in_g / PROTONMASS) * spectral_mass_unit_scale;
 		}
 	}
 
@@ -464,12 +527,15 @@ int main(int argc, char **argv)
 		for (int i = 0; i < ncells; ++i)
 		{
 			Tf[i] = T[i][j + 1];
-			NH1f[i] = rho[i][los] * (1.0 - nh2[i][j + 1] / nh[i]) * (UnitMass_in_g / PROTONMASS / Hubble_h); // NH[i][storej];
+			NH1f[i] = rho[i][los] * spectral_hydrogen_scale * (1.0 - nh2[i][j + 1] / nh[i]) * (UnitMass_in_g / PROTONMASS) * spectral_mass_unit_scale; // NH[i][storej];
 		}
 
 		//rp[j] = absorb_along_lines_of_sight(Tf, NH1f, Vpec); // lya optical depth and proximity zone size at each timestep
 
-		if (fabs(tf - tsim) <= Dt)
+		/* Stop only after reaching the requested lifetime. The legacy
+		 * fabs(tf-tsim)<=Dt test could stop one full global step early. */
+		double final_time_tolerance = 1e-12 * max(1.0, fabs(tf));
+		if (tsim >= tf - final_time_tolerance)
 		{
 			printf("%lf,%lf\n", tf, tsim);
 			storej = j + 1;
@@ -477,10 +543,10 @@ int main(int argc, char **argv)
 			{
 				Tf[i] = T[i][storej];
 				//  printf("%e\n",rho[i][los]);
-				NH1f[i] = rho[i][los] * (1.0 - nh2[i][storej] / nh[i]) * (UnitMass_in_g / PROTONMASS / Hubble_h); // NH[i][storej];
+				NH1f[i] = rho[i][los] * spectral_hydrogen_scale * (1.0 - nh2[i][storej] / nh[i]) * (UnitMass_in_g / PROTONMASS) * spectral_mass_unit_scale; // NH[i][storej];
 			}
 
-			rp[nt - 1] = absorb_along_lines_of_sight(Tf, NH1f, Vpec, Tau); //proximity zone size at the end of the simulation
+			rp[nt - 1] = absorb_along_lines_of_sight(Tf, NH1f, Vpec, Tau, correct_spectral_units); //proximity zone size at the end of the simulation
 			break;
 		}
 
@@ -496,7 +562,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	absorb_along_lines_of_sight(Tf, NH1f, Vpec, Tau); // to get the spectrum at the end of the simulation for the last timestep
+	absorb_along_lines_of_sight(Tf, NH1f, Vpec, Tau, correct_spectral_units); // to get the spectrum at the end of the simulation for the last timestep
 
 	/* Saves distance array in comoving kpc, xHI, gas temperature in K, xHeI, xHeII, xHeIII and Lyman alpha optical depth at each location at the end of the simulation for given quasar lifetime*/
     char *fileSpec;

@@ -12,7 +12,8 @@
 
 
 /* Routine for computing the Lyman alpha optical depth and spectrum */
-double absorb_along_lines_of_sight(double *Temp, double *NHI, double *Vpec, double *Tau)
+double absorb_along_lines_of_sight(double *Temp, double *NHI, double *Vpec,
+								   double *Tau, int correct_spectral_units)
 {
 	int ncells = Ncells;
 	int extra = num_pixels_redward; // number of cells included redward of the Lyman-alpha line
@@ -30,11 +31,15 @@ double absorb_along_lines_of_sight(double *Temp, double *NHI, double *Vpec, doub
 	double UnitVelocity_in_cm_per_s = 1e5;
 	double UnitTime_in_s = UnitLength_in_cm / UnitVelocity_in_cm_per_s;
 	double Hubble = HUBBLE * UnitTime_in_s;
+	if (correct_spectral_units)
+		Hubble *= Hubble_h; /* HUBBLE is 100 km/s/Mpc; use H0=100h. */
 
 	double H_a = Hubble * sqrt(Omega / (Time * Time * Time) +
 							   Lambda + (1 - Omega - Lambda) / (Time * Time));
 
-	double Wmax = Time * H_a * boxsize / Hubble_h;
+	double Wmax = Time * H_a * boxsize;
+	if (!correct_spectral_units)
+		Wmax /= Hubble_h;
 
 	//	double *Tau = (double*)malloc(encells*sizeof(double));
 	/*
